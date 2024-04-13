@@ -38,9 +38,9 @@ jobs:
 
           geodata-mode: true
           geox-url:
-            geosite: "https://cdn.jsdelivr.net/gh/DustinWin/ruleset_geodata@clash/geosite.dat"
-            geoip: "https://cdn.jsdelivr.net/gh/DustinWin/ruleset_geodata@clash/geoip-lite.dat"
-            mmdb: "https://cdn.jsdelivr.net/gh/DustinWin/ruleset_geodata@clash/Country-lite.mmdb"
+            geosite: "https://cdn.jsdelivr.net/gh/panyichen48737/ruleset_geodata@clash/geosite.dat"
+            geoip: "https://cdn.jsdelivr.net/gh/panyichen48737/ruleset_geodata@clash/geoip-lite.dat"
+            mmdb: "https://cdn.jsdelivr.net/gh/panyichen48737/ruleset_geodata@clash/Country-lite.mmdb"
           geo-auto-update: true
           geo-update-interval: 24
 
@@ -64,8 +64,7 @@ jobs:
           curl -sSL https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/all.txt | grep -i '\.[A-Z]' | awk -F'[/:]' '{print $4}' | sed 's/^/    - /' >> ./clash-config/geodata-fakeip-user.yaml
           cat <<EOF >> ./clash-config/geodata-fakeip-user.yaml
             nameserver:
-              - 'https://223.5.5.5/dns-query#h3=true'
-              - https://1.12.12.12/dns-query
+              - 118.31.222.235:5553
           EOF
 
       - name: Generate `clash` geodata-fakeip-user-noprocess.yaml
@@ -95,9 +94,9 @@ jobs:
 
           geodata-mode: true
           geox-url:
-            geosite: "https://cdn.jsdelivr.net/gh/DustinWin/ruleset_geodata@clash/geosite.dat"
-            geoip: "https://cdn.jsdelivr.net/gh/DustinWin/ruleset_geodata@clash/geoip-lite.dat"
-            mmdb: "https://cdn.jsdelivr.net/gh/DustinWin/ruleset_geodata@clash/Country-lite.mmdb"
+            geosite: "https://cdn.jsdelivr.net/gh/panyichen48737/ruleset_geodata@clash/geosite.dat"
+            geoip: "https://cdn.jsdelivr.net/gh/panyichen48737/ruleset_geodata@clash/geoip-lite.dat"
+            mmdb: "https://cdn.jsdelivr.net/gh/panyichen48737/ruleset_geodata@clash/Country-lite.mmdb"
           geo-auto-update: true
           geo-update-interval: 24
 
@@ -116,12 +115,10 @@ jobs:
             enhanced-mode: fake-ip
             fake-ip-filter: ['+.*']
             nameserver:
-              - 'https://223.5.5.5/dns-query#h3=true'
-              - https://1.12.12.12/dns-query
+              - 118.31.222.235:5553
             nameserver-policy:
-              'geosite:ads': rcode://refused
-              'geosite:microsoft-cn,apple-cn,google-cn,games-cn,cn,private': ['https://223.5.5.5/dns-query#h3=true', https://1.12.12.12/dns-query]
-              'geosite:proxy': ['https://1.1.1.1/dns-query#🪜 代理域名&h3=true', 'https://8.8.8.8/dns-query#🪜 代理域名']
+              'geosite:microsoft-cn,apple-cn,google-cn,games-cn,cn,private': ['118.31.222.235:5553']
+              'geosite:proxy': ['118.31.222.235:5553']
           EOF
 
       - name: Generate `clash` geodata-redirhost-user-noprocess.yaml
@@ -170,20 +167,17 @@ jobs:
           {
             "dns": {
               "servers": [
-                { "tag": "dns_block", "address": "rcode://refused" },
-                { "tag": "dns_alidns", "address": "h3://223.5.5.5/dns-query", "detour": "DIRECT" },
-                { "tag": "dns_dnspod", "address": "https://1.12.12.12/dns-query", "detour": "DIRECT" },
+                { "tag": "dns", "address": "118.31.222.235:5553", "detour": "DIRECT" },
                 { "tag": "dns_fakeip", "address": "fakeip" }
               ],
               "rules": [
-                { "outbound": "any", "server": [ "dns_alidns", "dns_dnspod" ] },
-                { "clash_mode": "Direct", "server": [ "dns_alidns", "dns_dnspod" ] },
+                { "outbound": "any", "server": [ "dns" ] },
+                { "clash_mode": "Direct", "server": [ "dns" ] },
                 { "clash_mode": "Global", "server": "dns_fakeip", "rewrite_ttl": 1 },
-                { "geosite": [ "ads" ], "server": "dns_block" },
-                { "geosite": [ "microsoft-cn", "apple-cn", "google-cn", "games-cn", "fakeip-filter", "private" ], "query_type": [ "A", "AAAA" ], "server": [ "dns_alidns", "dns_dnspod" ] },
+                { "geosite": [ "microsoft-cn", "apple-cn", "google-cn", "games-cn", "fakeip-filter", "private" ], "query_type": [ "A", "AAAA" ], "server": [ "dns" ] },
                 { "query_type": [ "A", "AAAA" ], "server": "dns_fakeip", "rewrite_ttl": 1 }
               ],
-              "final": [ "dns_alidns", "dns_dnspod" ],
+              "final": [ "dns" ],
               "strategy": "prefer_ipv4",
               "independent_cache": true,
               "reverse_mapping": true,
