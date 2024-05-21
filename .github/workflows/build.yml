@@ -18,8 +18,8 @@ jobs:
       - name: Set variables
         run: |
           echo "update_version=$(date -d '+8 hours' +%Y-%m-%d)" >> ${GITHUB_ENV}
-          echo "domains_download_url=https://raw.githubusercontent.com/DustinWin/domain-list-custom/domains" >> ${GITHUB_ENV}
-          echo "ips_download_url=https://raw.githubusercontent.com/DustinWin/geoip/ips" >> ${GITHUB_ENV}          
+          echo "domains_download_url=https://raw.githubusercontent.com/panyichen48737/domain-list-custom/domains" >> ${GITHUB_ENV}
+          echo "ips_download_url=https://raw.githubusercontent.com/panyichen48737/geoip/ips" >> ${GITHUB_ENV}          
         shell: bash
 
       - name: Clone Repository
@@ -54,9 +54,9 @@ jobs:
       - name: Generate `clash` geodata
         run: |
           mkdir -p ./community/mydata/
-          archs1=(ads private microsoft-cn apple-cn google-cn games-cn ai networktest netflix disney max primevideo appletv youtube tiktok bilibili proxy cn)
-          archs2=(ads private microsoft-cn apple-cn google-cn games-cn ai networktest proxy cn)
-          for ((i = 0; i < 18; i++)); do
+          archs1=(onedrive private microsoft-cn apple-cn google-cn games-cn fakeip-filter networktest netflix disney appletv youtube tiktok bilibili ai proxy cn hbo primevideo)
+          archs2=(onedrive private microsoft-cn apple-cn google-cn games-cn networktest ai proxy cn)
+          for ((i = 0; i < 19; i++)); do
             curl -sSL "${domains_download_url}/${archs1[i]}.list" | grep -Ev 'DOMAIN-REGEX,|PROCESS-' | sed -e '/^\s*$/d' -e 's/^DOMAIN,/full:/' -e 's/^DOMAIN-SUFFIX,//' -e 's/^DOMAIN-KEYWORD,/keyword:/' > "./community/mydata/${archs1[i]}"
           done
           curl -sSL "${domains_download_url}/fakeip-filter.list" | grep -v 'PROCESS-' | sed -e '/^\s*$/d' -e 's/^DOMAIN,/full:/' -e 's/^DOMAIN-SUFFIX,//' -e 's/^DOMAIN-KEYWORD,/keyword:/' -e 's/^DOMAIN-REGEX,/regexp:/' > ./community/mydata/fakeip-filter
@@ -109,8 +109,8 @@ jobs:
       - name: Generate `clash` rule-set
         run: |
           mkdir -p ./clash-ruleset/ ./sing-box-ruleset/
-          domains=(ads private microsoft-cn apple-cn google-cn games-cn ai netflix disney max primevideo appletv youtube tiktok bilibili proxy cn)
-          archs=(fakeip-filter applications networktest)
+          domains=(onedrive private microsoft-cn apple-cn google-cn games-cn netflix disney appletv youtube tiktok bilibili ai proxy cn hbo primevideo)
+          archs=(fakeip-filter networktest)
           ips=(netflixip telegramip privateip cnip)
 
           # Generate `clash` rule-set (yaml)
@@ -119,7 +119,7 @@ jobs:
             curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e "s/^DOMAIN,/  - '/" -e "s/^DOMAIN-SUFFIX,/  - '+\./" -e "s/$/'/" >> "./clash-ruleset/${domains[i]}.yaml"
           done
 
-          for ((i = 0; i < 3; i++)); do
+          for ((i = 0; i < 2; i++)); do
             echo 'payload:' > "./clash-ruleset/${archs[i]}.yaml"
             curl -sSL "${domains_download_url}/${archs[i]}.list" | sed 's/^/  - /' >> "./clash-ruleset/${archs[i]}.yaml"
           done
@@ -134,7 +134,7 @@ jobs:
             curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' > "./clash-ruleset/${domains[i]}.list"
           done
 
-          for ((i = 0; i < 3; i++)); do
+          for ((i = 0; i < 2; i++)); do
             curl -sSL "${domains_download_url}/${archs[i]}.list"  > "./clash-ruleset/${archs[i]}.list"
           done
 
@@ -148,7 +148,7 @@ jobs:
             curl "${domains_download_url}/${domains[i]}.list" | grep -v 'DOMAIN-REGEX,' | sed '/^\s*$/d' > "./tools/rules/${domains[i]}/${domains[i]}.yaml"
           done
 
-          for ((i = 0; i < 3; i++)); do
+          for ((i = 0; i < 2; i++)); do
             mkdir -p "./tools/rules/${archs[i]}/"
             curl "${domains_download_url}/${archs[i]}.list" > "./tools/rules/${archs[i]}/${archs[i]}.yaml"
           done
