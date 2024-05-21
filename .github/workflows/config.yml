@@ -124,7 +124,7 @@ jobs:
             nameserver-policy:
               'geosite:ads': rcode://refused
               'geosite:microsoft-cn,apple-cn,google-cn,games-cn,cn,private': ['https://223.5.5.5/dns-query#h3=true', https://1.12.12.12/dns-query]
-              'geosite:proxy': ['https://1.1.1.1/dns-query#🪜 代理域名&h3=true', 'https://8.8.8.8/dns-query#🪜 代理域名']
+              'geosite:proxy': ['https://1.1.1.1/dns-query#馃獪 浠ｇ悊鍩熷悕&h3=true', 'https://8.8.8.8/dns-query#馃獪 浠ｇ悊鍩熷悕']
           EOF
 
       - name: Generate `clash` geodata-redirhost-user-noprocess.yaml
@@ -171,25 +171,31 @@ jobs:
         run: |
           cat <<EOF > ./sing-box-config/geodata-dns.json
           {
+            // DNS
             "dns": {
+              // DNS 鏈嶅姟鍣�
               "servers": [
-                { "tag": "dns_block", "address": "rcode://refused" },
-                { "tag": "dns_alidns", "address": "h3://223.5.5.5/dns-query", "detour": "DIRECT" },
-                { "tag": "dns_dnspod", "address": "https://1.12.12.12/dns-query", "detour": "DIRECT" },
+                // 鑷缓
+                { "tag": "dns", "address": "udp://118.31.222.235:5553", "detour": "DIRECT" },
+              // FakeIP
                 { "tag": "dns_fakeip", "address": "fakeip" }
               ],
+              // DNS 瑙勫垯
               "rules": [
-                { "outbound": "any", "server": [ "dns_alidns", "dns_dnspod" ] },
-                { "clash_mode": "Direct", "server": [ "dns_alidns", "dns_dnspod" ] },
-                { "clash_mode": "Global", "server": "dns_fakeip", "rewrite_ttl": 1 },
-                { "geosite": [ "ads" ], "server": "dns_block" },
-                { "geosite": [ "fakeip-filter", "private" ], "query_type": [ "A", "AAAA" ], "server": [ "dns_alidns", "dns_dnspod" ] },
+                { "outbound": [ "🌍 节点选择 直连 备用", "🌍 节点选择 专线+中转", "🇭🇰 香港节点 直连 备用", "🇭🇰 香港节点 专线", "🇭🇰 香港节点 中转", "🇨🇳 台湾节点 专线", "🇨🇳 台湾节点 中转", "🇯🇵 日本节点 直连 备用", "🇯🇵 日本节点 专线", "🇯🇵 日本节点 中转", "🇸🇬 新加坡节点 直连 备用", "🇸🇬 新加坡节点 专线", "🇸🇬 新加坡节点 中转", "🇺🇸 美国节点 直连 备用", "🇺🇸 美国节点 专线", "🇺🇸 美国节点 中转"], "query_type": [ "A", "AAAA" ], "server": "dns_fakeip", "rewrite_ttl": 1 },
+                { "clash_mode": "Direct", "query_type": [ "A", "AAAA" ], "server": "dns" },
+                { "clash_mode": "Global", "query_type": [ "A", "AAAA" ], "server": "dns_fakeip", "rewrite_ttl": 1 },
+                { "rule_set": [ "microsoft-cn", "apple-cn", "google-cn", "games-cn", "cn", "private", "fakeip-filter" ], "query_type": [ "A", "AAAA" ], "server": "dns" },
+                { "rule_set": [ "proxy" ], "query_type": [ "A", "AAAA" ], "server": "dns_fakeip", "rewrite_ttl": 1 },
                 { "query_type": [ "A", "AAAA" ], "server": "dns_fakeip", "rewrite_ttl": 1 }
               ],
-              "final": [ "dns_alidns", "dns_dnspod" ],
-              "strategy": "prefer_ipv6",
-              "independent_cache": true,
-              "reverse_mapping": true,
+              "final": "dns",
+              "query_type": [ "A", "AAAA" ],
+              "strategy": "prefer_ipv4",
+              "disable_cache": true,
+              "disable_expire": false,
+              "independent_cache": false,
+              "reverse_mapping": false,
               "fakeip": { "enabled": true, "inet4_range": "198.18.0.0/15", "inet6_range": "fc00::/18" }
             }
           }
@@ -215,7 +221,7 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git checkout -b clash-config
-          git add . && git commit -m "Clash 配置文件更新于 ${update_version}"
+          git add . && git commit -m "Clash 更新于 ${update_version}"
           git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
           git push -f -u origin clash-config
 
@@ -226,7 +232,7 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git checkout -b sing-box-config
-          git add . && git commit -m "sing-box 配置文件更新于 ${update_version}"
+          git add . && git commit -m "sing-box 更新于 ${update_version}"
           git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
           git push -f -u origin sing-box-config
 
