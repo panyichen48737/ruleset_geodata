@@ -173,14 +173,11 @@ jobs:
           {
             // DNS
             "dns": {
-              // DNS 鏈嶅姟鍣�
               "servers": [
-                // 鑷缓
                 { "tag": "dns", "address": "udp://118.31.222.235:5553", "detour": "DIRECT" },
               // FakeIP
                 { "tag": "dns_fakeip", "address": "fakeip" }
               ],
-              // DNS 瑙勫垯
               "rules": [
                 { "outbound": [ "🌍 节点选择 直连 备用", "🌍 节点选择 专线+中转", "🇭🇰 香港节点 直连 备用", "🇭🇰 香港节点 专线", "🇭🇰 香港节点 中转", "🇨🇳 台湾节点 专线", "🇨🇳 台湾节点 中转", "🇯🇵 日本节点 直连 备用", "🇯🇵 日本节点 专线", "🇯🇵 日本节点 中转", "🇸🇬 新加坡节点 直连 备用", "🇸🇬 新加坡节点 专线", "🇸🇬 新加坡节点 中转", "🇺🇸 美国节点 直连 备用", "🇺🇸 美国节点 专线", "🇺🇸 美国节点 中转"], "query_type": [ "A", "AAAA" ], "server": "dns_fakeip", "rewrite_ttl": 1 },
                 { "clash_mode": "Direct", "query_type": [ "A", "AAAA" ], "server": "dns" },
