@@ -31,17 +31,17 @@ jobs:
           repository: v2fly/domain-list-community
           path: community
 
-      - name: Checkout DustinWin/geoip
+      - name: Checkout panyichen48737/geoip
         uses: actions/checkout@v4
         with:
-          repository: DustinWin/geoip
+          repository: panyichen48737/geoip
           ref: clash
           path: geoip/clash
 
-      - name: Checkout DustinWin/geoip
+      - name: Checkout panyichen48737/geoip
         uses: actions/checkout@v4
         with:
-          repository: DustinWin/geoip
+          repository: panyichen48737/geoip
           ref: sing-box
           path: geoip/sing-box
 
