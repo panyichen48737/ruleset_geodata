@@ -54,9 +54,9 @@ jobs:
       - name: Generate `clash` geodata
         run: |
           mkdir -p ./community/mydata/
-          archs1=(onedrive private microsoft-cn apple-cn google-cn games-cn fakeip-filter networktest netflix disney appletv youtube tiktok bilibili ai proxy cn hbo primevideo)
+          archs1=(onedrive private microsoft-cn apple-cn google-cn games-cn networktest netflix disney appletv youtube tiktok bilibili ai proxy cn hbo primevideo)
           archs2=(onedrive private microsoft-cn apple-cn google-cn games-cn networktest ai proxy cn)
-          for ((i = 0; i < 19; i++)); do
+          for ((i = 0; i < 18; i++)); do
             curl -sSL "${domains_download_url}/${archs1[i]}.list" | grep -Ev 'DOMAIN-REGEX,|PROCESS-' | sed -e '/^\s*$/d' -e 's/^DOMAIN,/full:/' -e 's/^DOMAIN-SUFFIX,//' -e 's/^DOMAIN-KEYWORD,/keyword:/' > "./community/mydata/${archs1[i]}"
           done
           curl -sSL "${domains_download_url}/fakeip-filter.list" | grep -v 'PROCESS-' | sed -e '/^\s*$/d' -e 's/^DOMAIN,/full:/' -e 's/^DOMAIN-SUFFIX,//' -e 's/^DOMAIN-KEYWORD,/keyword:/' -e 's/^DOMAIN-REGEX,/regexp:/' > ./community/mydata/fakeip-filter
