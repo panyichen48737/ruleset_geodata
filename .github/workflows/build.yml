@@ -54,9 +54,9 @@ jobs:
       - name: Generate `clash` geodata
         run: |
           mkdir -p ./community/mydata/
-          archs1=(onedrive private microsoft-cn apple-cn google-cn games-cn networktest netflix disney appletv youtube tiktok bilibili ai proxy cn hbo primevideo)
+          archs1=(onedrive private microsoft-cn apple-cn apple-proxy google-cn games-cn networktest netflix disney appletv youtube tiktok bilibili ai proxy cn hbo primevideo)
           archs2=(onedrive private microsoft-cn apple-cn google-cn games-cn networktest ai proxy cn)
-          for ((i = 0; i < 18; i++)); do
+          for ((i = 0; i < 19; i++)); do
             curl -sSL "${domains_download_url}/${archs1[i]}.list" | grep -Ev 'DOMAIN-REGEX,|PROCESS-' | sed -e '/^\s*$/d' -e 's/^DOMAIN,/full:/' -e 's/^DOMAIN-SUFFIX,//' -e 's/^DOMAIN-KEYWORD,/keyword:/' > "./community/mydata/${archs1[i]}"
           done
           curl -sSL "${domains_download_url}/fakeip-filter.list" | grep -v 'PROCESS-' | sed -e '/^\s*$/d' -e 's/^DOMAIN,/full:/' -e 's/^DOMAIN-SUFFIX,//' -e 's/^DOMAIN-KEYWORD,/keyword:/' -e 's/^DOMAIN-REGEX,/regexp:/' > ./community/mydata/fakeip-filter
@@ -109,12 +109,12 @@ jobs:
       - name: Generate `clash` rule-set
         run: |
           mkdir -p ./clash-ruleset/ ./sing-box-ruleset/
-          domains=(onedrive private microsoft-cn apple-cn google-cn games-cn netflix disney appletv youtube tiktok bilibili ai proxy cn hbo primevideo)
+          domains=(onedrive private microsoft-cn apple-cn apple-proxy google-cn games-cn netflix disney appletv youtube tiktok bilibili ai proxy cn hbo primevideo)
           archs=(fakeip-filter networktest)
           ips=(netflixip telegramip privateip cnip)
 
           # Generate `clash` rule-set (yaml)
-          for ((i = 0; i < 17; i++)); do
+          for ((i = 0; i < 18; i++)); do
             echo 'payload:' > "./clash-ruleset/${domains[i]}.yaml"
             curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e "s/^DOMAIN,/  - '/" -e "s/^DOMAIN-SUFFIX,/  - '+\./" -e "s/$/'/" >> "./clash-ruleset/${domains[i]}.yaml"
           done
@@ -130,7 +130,7 @@ jobs:
           done
 
           # Generate `clash` rule-set (text)
-          for ((i = 0; i < 17; i++)); do
+          for ((i = 0; i < 18; i++)); do
             curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' > "./clash-ruleset/${domains[i]}.list"
           done
 
@@ -143,7 +143,7 @@ jobs:
           done
 
           # Ready for generate `sing-box` rule_set
-          for ((i = 0; i < 17; i++)); do
+          for ((i = 0; i < 18; i++)); do
             mkdir -p "./tools/rules/${domains[i]}/"
             curl "${domains_download_url}/${domains[i]}.list" | grep -v 'DOMAIN-REGEX,' | sed '/^\s*$/d' > "./tools/rules/${domains[i]}/${domains[i]}.yaml"
           done
