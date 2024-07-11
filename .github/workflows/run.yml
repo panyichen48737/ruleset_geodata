@@ -127,55 +127,57 @@ jobs:
 
       - name: Generate `clash` rule-set
         run: |
+          echo "Start generating clash rule-set"
           mkdir -p ./clash-ruleset/ ./sing-box-ruleset/
           domains=(bing game private microsoft-cn apple-cn apple-proxy google-cn games-cn netflix disney appletv youtube tiktok bilibili ai proxy cn hbo primevideo)
           archs=(fakeip-filter networktest)
           ips=(netflixip telegramip privateip cnip)
-
+          echo "Directories created and arrays initialized"
           # Generate `clash` rule-set (yaml)
-          for ((i = 0; i < 19; i++)); do
-            echo 'payload:' > "./clash-ruleset/${domains[i]}.yaml"
-            curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e "s/^DOMAIN,/  - '/" -e "s/^DOMAIN-SUFFIX,/  - '+\./" -e "s/$/'/" >> "./clash-ruleset/${domains[i]}.yaml"
+           for ((i = 0; i < 19; i++)); do
+              echo "Processing domain: ${domains[i]}"
+              echo 'payload:' > "./clash-ruleset/${domains[i]}.yaml"
+              curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e "s/^DOMAIN,/  - '/" -e "s/^DOMAIN-SUFFIX,/  - '+\./" -e "s/$/'/" >> "./clash-ruleset/${domains[i]}.yaml" || { echo "Failed to download ${domains[i]}.list"; exit 1; }
           done
-
           for ((i = 0; i < 2; i++)); do
-            echo 'payload:' > "./clash-ruleset/${archs[i]}.yaml"
-            curl -sSL "${domains_download_url}/${archs[i]}.list" | sed 's/^/  - /' >> "./clash-ruleset/${archs[i]}.yaml"
+              echo "Processing arch: ${archs[i]}"
+              echo 'payload:' > "./clash-ruleset/${archs[i]}.yaml"
+              curl -sSL "${domains_download_url}/${archs[i]}.list" | sed 's/^/  - /' >> "./clash-ruleset/${archs[i]}.yaml" || { echo "Failed to download ${archs[i]}.list"; exit 1; }
           done
-
           for ((i = 0; i < 4; i++)); do
-            echo 'payload:' > "./clash-ruleset/${ips[i]}.yaml"
-            curl -sSL "${ips_download_url}/${ips[i]}.list" | grep 'IP-CIDR' | sed -e "s/^IP-CIDR,/  - '/" -e "s/^IP-CIDR6,/  - '/" -e "s/$/'/" >> "./clash-ruleset/${ips[i]}.yaml"
+                echo "Processing IP: ${ips[i]}"
+                echo 'payload:' > "./clash-ruleset/${ips[i]}.yaml"
+                curl -sSL "${ips_download_url}/${ips[i]}.list" | grep 'IP-CIDR' | sed -e "s/^IP-CIDR,/  - '/" -e "s/^IP-CIDR6,/  - '/" -e "s/$/'/" >> "./clash-ruleset/${ips[i]}.yaml" || { echo "Failed to download ${ips[i]}.list"; exit 1; }
           done
-
-          # Generate `clash` rule-set (text)
-          for ((i = 0; i < 19; i++)); do
-            curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' > "./clash-ruleset/${domains[i]}.list"
-          done
-
+           echo "Finished generating clash rule-set (yaml)"
+            # Generate `clash` rule-set (text)
+           for ((i = 0; i < 19; i++)); do
+                 echo "Processing domain: ${domains[i]} (text)"
+                 curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' > "./clash-ruleset/${domains[i]}.list" || { echo "Failed to download ${domains[i]}.list"; exit 1; }
+           done
           for ((i = 0; i < 2; i++)); do
-            curl -sSL "${domains_download_url}/${archs[i]}.list"  > "./clash-ruleset/${archs[i]}.list"
+                echo "Processing arch: ${archs[i]} (text)"
+                curl -sSL "${domains_download_url}/${archs[i]}.list"  > "./clash-ruleset/${archs[i]}.list" || { echo "Failed to download ${archs[i]}.list"; exit 1; }
           done
-
           for ((i = 0; i < 4; i++)); do
-            curl -sSL "${ips_download_url}/${ips[i]}.list" | grep 'IP-CIDR' | sed -e 's/^IP-CIDR,//' -e 's/^IP-CIDR6,//' > "./clash-ruleset/${ips[i]}.list"
+                echo "Processing IP: ${ips[i]} (text)"
+                curl -sSL "${ips_download_url}/${ips[i]}.list" | grep 'IP-CIDR' | sed -e 's/^IP-CIDR,//' -e 's/^IP-CIDR6,//' > "./clash-ruleset/${ips[i]}.list" || { echo "Failed to download ${ips[i]}.list"; exit 1; }
           done
-
+          echo "Finished generating clash rule-set (text)"
           # Ready for generate `sing-box` rule_set
-          for ((i = 0; i < 19; i++)); do
-            mkdir -p "./tools/rules/${domains[i]}/"
-            curl "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,|DOMAIN-KEYWORD' > "./tools/rules/${domains[i]}/${domains[i]}.yaml"
+           for ((i = 0; i < 19; i++)); do
+              mkdir -p "./tools/rules/${domains[i]}/"
+              curl "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,|DOMAIN-KEYWORD' > "./tools/rules/${domains[i]}/${domains[i]}.yaml" || { echo "Failed to download ${domains[i]}.list"; exit 1; }
           done
-
           for ((i = 0; i < 2; i++)); do
-            mkdir -p "./tools/rules/${archs[i]}/"
-            curl "${domains_download_url}/${archs[i]}.list" > "./tools/rules/${archs[i]}/${archs[i]}.yaml"
+              mkdir -p "./tools/rules/${archs[i]}/"
+              curl "${domains_download_url}/${archs[i]}.list" > "./tools/rules/${archs[i]}/${archs[i]}.yaml" || { echo "Failed to download ${archs[i]}.list"; exit 1; }
           done
-
           for ((i = 0; i < 4; i++)); do
-            mkdir -p "./tools/rules/${ips[i]}/"
-            curl -sSL "${ips_download_url}/${ips[i]}.list"| grep 'IP-CIDR' > "./tools/rules/${ips[i]}/${ips[i]}.yaml"
+              mkdir -p "./tools/rules/${ips[i]}/"
+              curl -sSL "${ips_download_url}/${ips[i]}.list"| grep 'IP-CIDR' > "./tools/rules/${ips[i]}/${ips[i]}.yaml" || { echo "Failed to download ${ips[i]}.list"; exit 1; }
           done
+          echo "Finished generating sing-box rule_set"
 
       - name: Download and unzip `sing-box core`
         run: |
