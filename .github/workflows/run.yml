@@ -127,7 +127,7 @@ jobs:
 
       - name: Generate `clash` rule-set
         run: |
-          echo "Start generating clash rule-set"
+          echo "Start generating clash rule-set by Pan"
           mkdir -p ./clash-ruleset/ ./sing-box-ruleset/
           domains=(bing games private microsoft-cn apple-cn apple-proxy google-cn games-cn netflix disney appletv youtube tiktok bilibili ai proxy cn hbo primevideo)
           archs=(fakeip-filter networktest)
