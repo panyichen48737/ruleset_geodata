@@ -10,7 +10,7 @@ directories=("../sing-box-ruleset" "../sing-box" "../clash" "../clash-ruleset")
 for dir in "${directories[@]}"; do
   # 遍历目标目录下的所有文件
   for file in "$dir"/*; do
-    [ -f "$file" ] && sed -i "1s/^/$current_time\n/" "$file"
+    [ -f "$file" ] && sed -i "1s/^/# 生成时间为 "$current_time"\n/" "$file"
   done
 done
 
