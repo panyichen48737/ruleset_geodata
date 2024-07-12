@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Set variables
         run: |
-          echo "update_version=$(date -d '+8 hours' +%Y-%m-%d)" >> ${GITHUB_ENV}
+          echo "update_version=$(date -d '+8 hours' '+%Y-%m-%d %H:%M:%S')" >> ${GITHUB_ENV}
           echo "fakeip_filter=https://raw.githubusercontent.com/juewuy/ShellCrash/dev/public/fake_ip_filter.list" >> $GITHUB_ENV
           echo "trackerslist=https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/all.txt" >> $GITHUB_ENV
         shell: bash
@@ -206,6 +206,11 @@ jobs:
           }
           EOF
           rm -rf ./tmp*
+
+      - name: Generate add_time
+        run: |
+          cd ./tools/
+          chmod +x add_time_config.sh && ./add_time_config.sh
 
       - name: Generate `sing-box` geodata-dns-lite.json
         run: |
