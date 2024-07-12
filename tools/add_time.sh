@@ -4,7 +4,7 @@
 current_time=$(date '+%Y-%m-%d %H:%M:%S')
 
 # 目标目录数组
-directories=("../crash" "./another_directory")
+directories=("../sing-box-ruleset" "../sing-box" "../clash" "../clash-ruleset")
 
 # 遍历每个目标目录
 for dir in "${directories[@]}"; do
