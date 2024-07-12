@@ -192,6 +192,11 @@ jobs:
           rm -rf ./sing-box* LICENSE ./rules*
           mv -f ./*.json ./*.srs ../sing-box-ruleset/
 
+      - name: Generate add_time
+        run: |
+          cd ./tools/
+          chmod +x add_time.sh && ./add_time.sh
+
       - name: Release and upload `clash` assets
         uses: svenstaro/upload-release-action@v2
         with:
