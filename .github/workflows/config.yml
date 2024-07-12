@@ -22,6 +22,9 @@ jobs:
           echo "trackerslist=https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/all.txt" >> $GITHUB_ENV
         shell: bash
 
+      - name: Clone Repository
+        uses: actions/checkout@master
+
       - name: Generate `clash` geodata-fakeip-user.yaml
         run: |
           mkdir -p ./tmp/ ./clash-config/ ./sing-box-config/
