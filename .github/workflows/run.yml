@@ -151,7 +151,7 @@ jobs:
           done
            echo "Finished generating clash rule-set (yaml)"
             # Generate `clash` rule-set (text)
-           for ((i = 0; i < 19; i++)); do
+           for ((i = 0; i < 20; i++)); do
                  echo "Processing domain: ${domains[i]} (text)"
                  curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' > "./clash-ruleset/${domains[i]}.list" || { echo "Failed to download ${domains[i]}.list"; exit 1; }
            done
@@ -165,7 +165,7 @@ jobs:
           done
           echo "Finished generating clash rule-set (text)"
           # Ready for generate `sing-box` rule_set
-           for ((i = 0; i < 19; i++)); do
+           for ((i = 0; i < 20; i++)); do
               mkdir -p "./tools/rules/${domains[i]}/"
               curl "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,|DOMAIN-KEYWORD' > "./tools/rules/${domains[i]}/${domains[i]}.yaml" || { echo "Failed to download ${domains[i]}.list"; exit 1; }
           done
