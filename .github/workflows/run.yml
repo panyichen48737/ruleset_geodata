@@ -60,7 +60,7 @@ jobs:
       - name: Generate `clash` geodata
         run: |
           mkdir -p ./community/mydata/
-          archs1=(bing onedrive games private microsoft-cn apple-cn apple-proxy google-cn games-cn networktest netflix disney appletv youtube tiktok bilibili ai proxy cn hbo primevideo)
+          archs1=(bing onedrive games private microsoft-cn apple-cn apple-proxy google-cn games-cn networktest netflix disney appletv youtube tiktok bilibili ai proxy cn primevideo hbo)
           archs2=(bing onedrive games private microsoft-cn apple-cn google-cn games-cn networktest ai proxy cn)
 
           # Generate `clash` geosite-all.dat
@@ -129,7 +129,7 @@ jobs:
         run: |
           echo "Start generating clash rule-set by Pan"
           mkdir -p ./clash-ruleset/ ./sing-box-ruleset/
-          domains=(bing onedrive games private microsoft-cn apple-cn apple-proxy google-cn games-cn netflix disney appletv youtube tiktok bilibili ai proxy cn hbo primevideo)
+          domains=(bing onedrive games private microsoft-cn apple-cn apple-proxy google-cn games-cn netflix disney appletv youtube tiktok bilibili ai proxy cn primevideo hbo)
           archs=(fakeip-filter networktest)
           ips=(netflixip telegramip privateip cnip)
           echo "Directories created and arrays initialized"
