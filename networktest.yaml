@@ -1,0 +1,11 @@
+# 生成时间为 2024-08-09 02:40:47
+payload:
+  - DOMAIN-KEYWORD,ipv6-test
+  - DOMAIN-KEYWORD,ipv6test
+  - DOMAIN-KEYWORD,speedtest
+  - DOMAIN-KEYWORD,test-ipv6
+  - DOMAIN-KEYWORD,testipv6
+  - DOMAIN-SUFFIX,fast.com
+  - DOMAIN-SUFFIX,ooklaserver.net
+  - DOMAIN-SUFFIX,speed.cloudflare.com
+  - DOMAIN-SUFFIX,speed.dler.io
