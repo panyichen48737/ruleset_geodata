@@ -1,0 +1,19 @@
+# 生成时间为 2024-09-23 02:40:04
+{
+  "version": 1,
+  "rules": [
+    {
+      "domain_suffix": [
+        "bing.com",
+        "bing.com.cn",
+        "bing.net",
+        "bingads.com",
+        "bingagencyawards.com",
+        "bingapistatistics.com",
+        "bingsandbox.com",
+        "bingvisualsearch.com",
+        "bingworld.com"
+      ]
+    }
+  ]
+}
