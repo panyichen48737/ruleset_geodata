@@ -122,7 +122,7 @@ jobs:
           ips=(netflixip telegramip privateip cnip)
 
           # Generate `clash` rule-set (yaml)
-          for ((i = 0; i < 20; i++)); do
+          for ((i = 0; i < 21; i++)); do
             echo 'payload:' > "./clash-ruleset/${domains[i]}.yaml"
             curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e "s/^DOMAIN,/  - '/" -e "s/^DOMAIN-SUFFIX,/  - '+\./" -e "s/$/'/" >> "./clash-ruleset/${domains[i]}.yaml"
           done
@@ -140,7 +140,7 @@ jobs:
           done
 
           # Generate `clash` rule-set (text)
-          for ((i = 0; i < 20; i++)); do
+          for ((i = 0; i < 21; i++)); do
             curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' > "./clash-ruleset/${domains[i]}.list"
           done
           curl -sSL "${domains_download_url}/fakeip-filter.list" | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' -e 's/^DOMAIN-REGEX,//' -e 's/^\.//' > ./clash-ruleset/fakeip-filter.list
@@ -154,7 +154,7 @@ jobs:
           done
 
           # Ready for generate `clash` rule-set (mrs)
-          for ((i = 0; i < 20; i++)); do
+          for ((i = 0; i < 21; i++)); do
             mkdir -p "./tools/domains/${domains[i]}/"
             curl "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' > "./tools/domains/${domains[i]}/${domains[i]}.list"
           done
@@ -167,7 +167,7 @@ jobs:
           done
 
           # Ready for generate `sing-box` rule_set
-          for ((i = 0; i < 20; i++)); do
+          for ((i = 0; i < 21; i++)); do
             mkdir -p "./tools/rules/${domains[i]}/"
             curl "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,|DOMAIN-KEYWORD' > "./tools/rules/${domains[i]}/${domains[i]}.yaml"
           done
