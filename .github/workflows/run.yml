@@ -16,6 +16,14 @@ jobs:
       - name: Set variables
         run: |
           echo "update_version=$(date -d '+8 hours' +%Y-%m-%d)" >> ${GITHUB_ENV}
+          singbox_core_version=$(curl -sSL https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r '.tag_name' | sed 's/^v//')
+          singbox_rules_version=$(wget -qO- "https://github.com/SagerNet/sing-box/archive/refs/tags/v$singbox_core_version.tar.gz" | tar -xz --to-stdout "sing-box-$singbox_core_version/constant/rule.go" | grep 'RuleSetVersionCurrent' | sed 's/.*\([0-9]\+\)$/\1/')
+          echo "singbox_core_version=${singbox_core_version}" >> ${GITHUB_ENV}
+          echo "singbox_rules_version=${singbox_rules_version}" >> ${GITHUB_ENV}
+          singbox_core_old_version=$(curl -sSL https://api.github.com/repos/SagerNet/sing-box/releases | jq -r '.[] | select(.tag_name | test("alpha|beta|rc") | not).tag_name' | sort -V | awk -F. 'prev != $2 {print line} {prev=$2; line=$0}' | tail -n 1 | sed 's/^v//')
+          singbox_rules_old_version=$(wget -qO- "https://github.com/SagerNet/sing-box/archive/refs/tags/v$singbox_core_old_version.tar.gz" | tar -xz --to-stdout "sing-box-$singbox_core_old_version/constant/rule.go" | grep 'RuleSetVersionCurrent' | sed 's/.*\([0-9]\+\)$/\1/')
+          echo "singbox_core_old_version=${singbox_core_old_version}" >> ${GITHUB_ENV}
+          echo "singbox_rules_old_version=${singbox_rules_old_version}" >> ${GITHUB_ENV}
           echo "domains_download_url=https://raw.githubusercontent.com/DustinWin/domain-list-custom/domains" >> ${GITHUB_ENV}
           echo "ips_download_url=https://github.com/DustinWin/geoip/releases/download/ips" >> ${GITHUB_ENV}
         shell: bash
@@ -230,17 +238,31 @@ jobs:
 
       - name: Download and unzip `sing-box` core
         run: |
-          wget https://github.com/DustinWin/proxy-tools/releases/download/sing-box/sing-box-release-linux-amd64.tar.gz -O - | tar -zxf - -C ./tools/
-          mv -f ./tools/CrashCore ./tools/sing-box
+          wget "https://github.com/SagerNet/sing-box/releases/download/v${{ env.singbox_core_version }}/sing-box-${{ env.singbox_core_version }}-linux-amd64.tar.gz" -O - | tar -zxf - -C ./tools/
+          mv -f ./tools/sing-box-${{ env.singbox_core_version }}-linux-amd64/sing-box ./tools/sing-box
 
       - name: Generate `sing-box` rule_set
         run: |
           mkdir -p ./sing-box-ruleset/
           cd ./tools/
-          sed -i 's/"version": 1/"version": 3/' ./convert.sh
+          sed -i 's/"version": 1/"version": ${{ env.singbox_rules_version }}/' ./convert.sh
+          chmod +x ./convert.sh && ./convert.sh
+          rm -rf ./sing-box*
+          mv -f ./*.json ./*.srs ../sing-box-ruleset/
+
+      - name: Download and unzip `sing-box` core (compatible)
+        run: |
+          wget https://github.com/SagerNet/sing-box/releases/download/v${{ env.singbox_core_old_version }}/sing-box-${{ env.singbox_core_old_version }}-linux-amd64.tar.gz -O - | tar -zxf - -C ./tools/
+          mv -f ./tools/sing-box-${{ env.singbox_core_old_version }}-linux-amd64/sing-box ./tools/sing-box
+
+      - name: Generate `sing-box` rule_set (compatible)
+        run: |
+          mkdir -p ./sing-box-ruleset-compatible/
+          cd ./tools/
+          sed -i 's/"version": ${{ env.singbox_rules_version }}/"version": ${{ env.singbox_rules_old_version }}/' ./convert.sh
           chmod +x ./convert.sh && ./convert.sh
           rm -rf ./sing-box* ./rules*
-          mv -f ./*.json ./*.srs ../sing-box-ruleset/
+          mv -f ./*.json ./*.srs ../sing-box-ruleset-compatible/
 
       - name: Release and upload `mihomo` assets
         uses: svenstaro/upload-release-action@v2
@@ -322,7 +344,7 @@ jobs:
           tag: sing-box-ruleset
           overwrite: true
           body: |
-            [sing-box](https://github.com/SagerNet/sing-box) rule_set 规则集文件
+            [sing-box](https://github.com/SagerNet/sing-box) rule_set 规则集文件（`"version": ${{ env.singbox_rules_version }}`）
             规则集文件更新于 ${{ env.update_version }}
           file_glob: true
           file: ./sing-box-ruleset/*
@@ -337,6 +359,30 @@ jobs:
           git add . && git commit -m "sing-box rule_set 规则集文件更新于 ${update_version}"
           git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
           git push -f origin sing-box-ruleset
+
+      - name: Release and upload `sing-box-ruleset-compatible` assets
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          release_name: sing-box-ruleset-compatible
+          tag: sing-box-ruleset-compatible
+          overwrite: true
+          body: |
+            [sing-box](https://github.com/SagerNet/sing-box) rule_set 规则集文件（`"version": ${{ env.singbox_rules_old_version }}`）
+            规则集文件更新于 ${{ env.update_version }}
+          file_glob: true
+          file: ./sing-box-ruleset-compatible/*
+
+      - name: Commit and push `sing-box-ruleset-compatible` branch
+        run: |
+          cd ./sing-box-ruleset-compatible/ || exit 1
+          git init
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git checkout -b sing-box-ruleset-compatible
+          git add . && git commit -m "sing-box rule_set 规则集文件更新于 ${update_version}"
+          git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
+          git push -f origin sing-box-ruleset-compatible
 
       - name: Purge jsDelivr CDN
         run: |
@@ -355,6 +401,10 @@ jobs:
           cd ../sing-box-ruleset/ || exit 1
           for file in $(ls); do
             curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@sing-box-ruleset/${file}"
+          done
+          cd ../sing-box-ruleset-compatible/ || exit 1
+          for file in $(ls); do
+            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@sing-box-ruleset-compatible/${file}"
           done
 
       - name: Delete old workflow runs
