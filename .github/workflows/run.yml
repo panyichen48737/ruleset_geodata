@@ -24,7 +24,7 @@ jobs:
           singbox_rules_old_version=$(wget -qO- "https://github.com/SagerNet/sing-box/archive/refs/tags/v$singbox_core_old_version.tar.gz" | tar -xz --to-stdout "sing-box-$singbox_core_old_version/constant/rule.go" | grep 'RuleSetVersionCurrent' | sed 's/.*\([0-9]\+\)$/\1/')
           echo "singbox_core_old_version=${singbox_core_old_version}" >> ${GITHUB_ENV}
           echo "singbox_rules_old_version=${singbox_rules_old_version}" >> ${GITHUB_ENV}
-          echo "domains_download_url=https://raw.githubusercontent.com/DustinWin/panyichen48737/domains" >> ${GITHUB_ENV}
+          echo "domains_download_url=https://raw.githubusercontent.com/panyichen48737/domain-list-custom/domains" >> ${GITHUB_ENV}
           echo "ips_download_url=https://github.com/panyichen48737/geoip/releases/download/ips" >> ${GITHUB_ENV}
         shell: bash
 
