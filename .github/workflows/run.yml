@@ -192,7 +192,7 @@ jobs:
           for ((i = 0; i < 22; i++)); do
             echo "Downloading ${domains[i]}.list..."
             mkdir -p "./tools/domains/${domains[i]}/"
-            curl "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' > "./tools/domains/${domains[i]}/${domains[i]}.list"
+            curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' > "./tools/domains/${domains[i]}/${domains[i]}.list"
           done
           mkdir -p "./tools/domains/fakeip-filter/"
           curl -sSL "${domains_download_url}/fakeip-filter.list" | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' -e 's/^DOMAIN-REGEX,//' -e 's/^\.//' > ./tools/domains/fakeip-filter/fakeip-filter.list
@@ -207,12 +207,12 @@ jobs:
           # Ready for generate `sing-box` rule_set
           for ((i = 0; i < 22; i++)); do
             mkdir -p "./tools/rules/${domains[i]}/"
-            curl "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,|DOMAIN-KEYWORD' > "./tools/rules/${domains[i]}/${domains[i]}.yaml"
+            curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,|DOMAIN-KEYWORD' > "./tools/rules/${domains[i]}/${domains[i]}.yaml"
           done
           mkdir -p ./tools/rules/fakeip-filter/
-          curl "${domains_download_url}/fakeip-filter.list" > ./tools/rules/fakeip-filter/fakeip-filter.yaml
+          curl -sSL "${domains_download_url}/fakeip-filter.list" > ./tools/rules/fakeip-filter/fakeip-filter.yaml
           mkdir -p ./tools/rules/fakeip-filter-lite/
-          curl "${domains_download_url}/fakeip-filter-lite.list" | grep -Ev 'DOMAIN-REGEX,|ntp|time|stun' > ./tools/rules/fakeip-filter-lite/fakeip-filter-lite.yaml
+          curl -sSL "${domains_download_url}/fakeip-filter-lite.list" | grep -Ev 'DOMAIN-REGEX,|ntp|time|stun' > ./tools/rules/fakeip-filter-lite/fakeip-filter-lite.yaml
           cat <<EOF >> ./tools/rules/fakeip-filter-lite/fakeip-filter-lite.yaml
           DOMAIN-KEYWORD,ntp
           DOMAIN-KEYWORD,time
@@ -221,7 +221,7 @@ jobs:
 
           for ((i = 0; i < 1; i++)); do
             mkdir -p "./tools/rules/${archs[i]}/"
-            curl "${domains_download_url}/${archs[i]}.list" > "./tools/rules/${archs[i]}/${archs[i]}.yaml"
+            curl -sSL "${domains_download_url}/${archs[i]}.list" > "./tools/rules/${archs[i]}/${archs[i]}.yaml"
           done
 
           for ((i = 0; i < 4; i++)); do
