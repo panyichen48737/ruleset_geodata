@@ -24,17 +24,17 @@ jobs:
           singbox_rules_old_version=$(wget -qO- "https://github.com/SagerNet/sing-box/archive/refs/tags/v$singbox_core_old_version.tar.gz" | tar -xz --to-stdout "sing-box-$singbox_core_old_version/constant/rule.go" | grep 'RuleSetVersionCurrent' | sed 's/.*\([0-9]\+\)$/\1/')
           echo "singbox_core_old_version=${singbox_core_old_version}" >> ${GITHUB_ENV}
           echo "singbox_rules_old_version=${singbox_rules_old_version}" >> ${GITHUB_ENV}
-          echo "domains_download_url=https://raw.githubusercontent.com/DustinWin/domain-list-custom/domains" >> ${GITHUB_ENV}
-          echo "ips_download_url=https://github.com/DustinWin/geoip/releases/download/ips" >> ${GITHUB_ENV}
+          echo "domains_download_url=https://raw.githubusercontent.com/DustinWin/panyichen48737/domains" >> ${GITHUB_ENV}
+          echo "ips_download_url=https://github.com/panyichen48737/geoip/releases/download/ips" >> ${GITHUB_ENV}
         shell: bash
 
       - name: Clone Repository
         uses: actions/checkout@master
 
-      - name: Checkout DustinWin/domain-list-custom
+      - name: Checkout panyichen48737/domain-list-custom
         uses: actions/checkout@v4
         with:
-          repository: DustinWin/domain-list-custom
+          repository: panyichen48737/domain-list-custom
           path: custom
 
       - name: Checkout v2fly/domain-list-community
@@ -52,11 +52,11 @@ jobs:
       - name: Generate `mihomo` geodata
         run: |
           mkdir -p ./community/mydata/
-          archs1=(private ads microsoft-cn apple-cn google-cn games-cn ai networktest netflix disney max primevideo appletv youtube tiktok bilibili tld-proxy proxy tld-cn cn)
-          archs2=(private ads microsoft-cn apple-cn google-cn games-cn ai networktest tld-proxy proxy tld-cn cn)
+          archs1=(bing onedrive games private microsoft-cn apple-cn apple-proxy google-cn games-cn ai networktest netflix disney hbo primevideo appletv youtube tiktok bilibili tld-proxy proxy tld-cn cn)
+          archs2=(private microsoft-cn apple-cn google-cn games-cn ai networktest tld-proxy proxy tld-cn cn)
 
           # Generate `mihomo` geosite-all.dat
-          for ((i = 0; i < 20; i++)); do
+          for ((i = 0; i < 23; i++)); do
             curl -sSL "${domains_download_url}/${archs1[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,|DOMAIN-KEYWORD' | sed -e 's/^DOMAIN,/full:/' -e 's/^DOMAIN-SUFFIX,//' -e 's/^DOMAIN-KEYWORD,/keyword:/' > "./community/mydata/${archs1[i]}"
           done
           curl -sSL "${domains_download_url}/fakeip-filter.list" | sed -e 's/^DOMAIN,/full:/' -e 's/^DOMAIN-SUFFIX,//' -e 's/^DOMAIN-KEYWORD,/keyword:/' -e 's/^DOMAIN-REGEX,/regexp:/' > ./community/mydata/fakeip-filter
@@ -137,12 +137,12 @@ jobs:
       - name: Generate `mihomo` rule-set
         run: |
           mkdir -p ./mihomo-ruleset/
-          domains=(private ads microsoft-cn apple-cn google-cn games-cn ai netflix disney max primevideo appletv youtube tiktok bilibili tld-proxy proxy tld-cn cn)
-          archs=(applications networktest)
+          domains=(bing onedrive games private microsoft-cn apple-cn apple-proxy google-cn games-cn ai netflix disney hbo primevideo appletv youtube tiktok bilibili tld-proxy proxy tld-cn cn)
+          archs=(networktest)
           ips=(netflixip telegramip privateip cnip)
 
           # Generate `mihomo` rule-set (yaml)
-          for ((i = 0; i < 19; i++)); do
+          for ((i = 0; i < 22; i++)); do
             echo 'payload:' > "./mihomo-ruleset/${domains[i]}.yaml"
             curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e "s/^DOMAIN,/  - '/" -e "s/^DOMAIN-SUFFIX,/  - '+\./" -e "s/$/'/" >> "./mihomo-ruleset/${domains[i]}.yaml"
           done
@@ -151,7 +151,7 @@ jobs:
           echo 'payload:' > "./mihomo-ruleset/fakeip-filter-lite.yaml"
           curl -sSL "${domains_download_url}/fakeip-filter-lite.list" | sed -e "s/^DOMAIN,/  - '/" -e "s/^DOMAIN-SUFFIX,/  - '+\./" -e "s/^DOMAIN-REGEX,/  - '/" -e "s/'\./'/" -e "s/$/'/" >> ./mihomo-ruleset/fakeip-filter-lite.yaml
 
-          for ((i = 0; i < 2; i++)); do
+          for ((i = 0; i < 1; i++)); do
             echo 'payload:' > "./mihomo-ruleset/${archs[i]}.yaml"
             curl -sSL "${domains_download_url}/${archs[i]}.list" | sed 's/^/  - /' >> "./mihomo-ruleset/${archs[i]}.yaml"
           done
@@ -162,13 +162,13 @@ jobs:
           done
 
           # Generate `mihomo` rule-set (text)
-          for ((i = 0; i < 19; i++)); do
+          for ((i = 0; i < 22; i++)); do
             curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' > "./mihomo-ruleset/${domains[i]}.list"
           done
           curl -sSL "${domains_download_url}/fakeip-filter.list" | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' -e 's/^DOMAIN-REGEX,//' -e 's/^\.//' > ./mihomo-ruleset/fakeip-filter.list
           curl -sSL "${domains_download_url}/fakeip-filter-lite.list" | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' -e 's/^DOMAIN-REGEX,//' -e 's/^\.//' > ./mihomo-ruleset/fakeip-filter-lite.list
 
-          for ((i = 0; i < 2; i++)); do
+          for ((i = 0; i < 1; i++)); do
             curl -sSL "${domains_download_url}/${archs[i]}.list"  > "./mihomo-ruleset/${archs[i]}.list"
           done
 
@@ -177,7 +177,7 @@ jobs:
           done
 
           # Ready for generate `mihomo` rule-set (mrs)
-          for ((i = 0; i < 19; i++)); do
+          for ((i = 0; i < 22; i++)); do
             mkdir -p "./tools/domains/${domains[i]}/"
             curl "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' > "./tools/domains/${domains[i]}/${domains[i]}.list"
           done
@@ -192,7 +192,7 @@ jobs:
           done
 
           # Ready for generate `sing-box` rule_set
-          for ((i = 0; i < 19; i++)); do
+          for ((i = 0; i < 22; i++)); do
             mkdir -p "./tools/rules/${domains[i]}/"
             curl "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,|DOMAIN-KEYWORD' > "./tools/rules/${domains[i]}/${domains[i]}.yaml"
           done
@@ -206,7 +206,7 @@ jobs:
           DOMAIN-KEYWORD,stun
           EOF
 
-          for ((i = 0; i < 2; i++)); do
+          for ((i = 0; i < 1; i++)); do
             mkdir -p "./tools/rules/${archs[i]}/"
             curl "${domains_download_url}/${archs[i]}.list" > "./tools/rules/${archs[i]}/${archs[i]}.yaml"
           done
