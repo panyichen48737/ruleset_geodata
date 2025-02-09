@@ -144,7 +144,7 @@ jobs:
           # Generate `mihomo` rule-set (yaml)
           for ((i = 0; i < 22; i++)); do
             echo 'payload:' > "./mihomo-ruleset/${domains[i]}.yaml"
-            curl -sSL -v "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e "s/^DOMAIN,/  - '/" -e "s/^DOMAIN-SUFFIX,/  - '+\./" -e "s/$/'/" >> "./mihomo-ruleset/${domains[i]}.yaml"
+            curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e "s/^DOMAIN,/  - '/" -e "s/^DOMAIN-SUFFIX,/  - '+\./" -e "s/$/'/" >> "./mihomo-ruleset/${domains[i]}.yaml"
           done
           echo 2
           echo 'payload:' > "./mihomo-ruleset/fakeip-filter.yaml"
@@ -169,9 +169,11 @@ jobs:
           for ((i = 0; i < 22; i++)); do
             curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' > "./mihomo-ruleset/${domains[i]}.list"
           done
+          echo 7
           curl -sSL "${domains_download_url}/fakeip-filter.list" | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' -e 's/^DOMAIN-REGEX,//' -e 's/^\.//' > ./mihomo-ruleset/fakeip-filter.list
           curl -sSL "${domains_download_url}/fakeip-filter-lite.list" | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' -e 's/^DOMAIN-REGEX,//' -e 's/^\.//' > ./mihomo-ruleset/fakeip-filter-lite.list
-
+          echo 8
+          
           for ((i = 0; i < 1; i++)); do
             curl -sSL "${domains_download_url}/${archs[i]}.list"  > "./mihomo-ruleset/${archs[i]}.list"
           done
