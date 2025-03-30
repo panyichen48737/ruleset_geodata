@@ -17,14 +17,10 @@ jobs:
       - name: Set variables
         run: |
           echo "update_version=$(date -d '+8 hours' +%Y-%m-%d)" >> ${GITHUB_ENV}
-          singbox_core_version=$(curl -sSL https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r '.tag_name' | sed 's/^v//')
-          singbox_rules_version=$(wget -qO- "https://github.com/SagerNet/sing-box/archive/refs/tags/v$singbox_core_version.tar.gz" | tar -xz --to-stdout "sing-box-$singbox_core_version/constant/rule.go" | grep 'RuleSetVersionCurrent' | sed 's/.*\([0-9]\+\)$/\1/')
-          echo "singbox_core_version=${singbox_core_version}" >> ${GITHUB_ENV}
-          echo "singbox_rules_version=${singbox_rules_version}" >> ${GITHUB_ENV}
-          singbox_core_old_version=$(curl -sSL https://api.github.com/repos/SagerNet/sing-box/releases | jq -r '.[] | select(.tag_name | test("alpha|beta|rc") | not).tag_name' | sort -V | awk -F. 'prev != $2 {print line} {prev=$2; line=$0}' | tail -n 1 | sed 's/^v//')
-          singbox_rules_old_version=$(wget -qO- "https://github.com/SagerNet/sing-box/archive/refs/tags/v$singbox_core_old_version.tar.gz" | tar -xz --to-stdout "sing-box-$singbox_core_old_version/constant/rule.go" | grep 'RuleSetVersionCurrent' | sed 's/.*\([0-9]\+\)$/\1/')
-          echo "singbox_core_old_version=${singbox_core_old_version}" >> ${GITHUB_ENV}
-          echo "singbox_rules_old_version=${singbox_rules_old_version}" >> ${GITHUB_ENV}
+          echo "singbox_core_old_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/ {second_last=current; current=$0} END {print second_last}' | sed -n 's/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')" >> ${GITHUB_ENV}
+          echo "singbox_rules_old_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/ {second_last=current; current=$0} END {print second_last}' | sed -n 's/^<li>\([0-9]\+\).*/\1/p')" >> ${GITHUB_ENV}
+          echo "singbox_core_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/ {last=$0} END {print last}' | sed -n 's/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')" >> ${GITHUB_ENV}
+          echo "singbox_rules_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/ {last=$0} END {print last}' | sed -n 's/^<li>\(
           echo "domains_download_url=https://raw.githubusercontent.com/panyichen48737/domain-list-custom/domains" >> ${GITHUB_ENV}
           echo "ips_download_url=https://github.com/panyichen48737/geoip/releases/download/ips" >> ${GITHUB_ENV}
         shell: bash
