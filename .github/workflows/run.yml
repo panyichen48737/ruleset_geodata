@@ -49,7 +49,7 @@ jobs:
       - name: Generate `mihomo` geodata
         run: |
           mkdir -p ./community/mydata/
-          archs1=(bing onedrive games private microsoft-cn apple-cn apple-proxy google-cn games-cn ai networktest netflix disney hbo primevideo appletv youtube tiktok bilibili tld-proxy proxy tld-cn cn)
+          archs1=(bing trackerslist onedrive games private microsoft-cn apple-cn apple-proxy google-cn games-cn ai networktest netflix disney hbo primevideo appletv youtube tiktok bilibili tld-proxy proxy tld-cn cn)
           archs2=(private microsoft-cn apple-cn google-cn games-cn ai networktest tld-proxy proxy tld-cn cn)
 
           # Generate `mihomo` geosite-all.dat
@@ -134,12 +134,12 @@ jobs:
       - name: Generate `mihomo` rule-set
         run: |
           mkdir -p ./mihomo-ruleset/
-          domains=(bing onedrive games private microsoft-cn apple-cn apple-proxy google-cn games-cn ai netflix disney hbo primevideo appletv youtube tiktok bilibili tld-proxy proxy tld-cn cn)
+          domains=(bing trackerslist onedrive games private microsoft-cn apple-cn apple-proxy google-cn games-cn ai netflix disney hbo primevideo appletv youtube tiktok bilibili tld-proxy proxy tld-cn cn)
           archs=(networktest)
           ips=(netflixip telegramip privateip cnip gamesip)
 
           # Generate `mihomo` rule-set (yaml)
-          for ((i = 0; i < 22; i++)); do
+          for ((i = 0; i < 23; i++)); do
             echo "Downloading ${domains[i]}.list..."
             echo 'payload:' > "./mihomo-ruleset/${domains[i]}.yaml"
             curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e "s/^DOMAIN,/  - '/" -e "s/^DOMAIN-SUFFIX,/  - '+\./" -e "s/$/'/" >> "./mihomo-ruleset/${domains[i]}.yaml"
@@ -166,7 +166,7 @@ jobs:
           
 
           # Generate `mihomo` rule-set (text)
-          for ((i = 0; i < 22; i++)); do
+          for ((i = 0; i < 23; i++)); do
             echo "Downloading ${domains[i]}.list..."
             curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' > "./mihomo-ruleset/${domains[i]}.list"
           done
@@ -187,7 +187,7 @@ jobs:
 
           echo 4
           # Ready for generate `mihomo` rule-set (mrs)
-          for ((i = 0; i < 22; i++)); do
+          for ((i = 0; i < 23; i++)); do
             echo "Downloading ${domains[i]}.list..."
             mkdir -p "./tools/domains/${domains[i]}/"
             curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,' | sed -e 's/^DOMAIN,//' -e 's/^DOMAIN-SUFFIX,/+\./' > "./tools/domains/${domains[i]}/${domains[i]}.list"
@@ -206,7 +206,7 @@ jobs:
 
           echo 5
           # Ready for generate `sing-box` rule_set
-          for ((i = 0; i < 22; i++)); do
+          for ((i = 0; i < 23; i++)); do
             echo "Downloading ${domains[i]}.list..."
             mkdir -p "./tools/rules/${domains[i]}/"
             curl -sSL "${domains_download_url}/${domains[i]}.list" | grep -E 'DOMAIN,|DOMAIN-SUFFIX,|DOMAIN-KEYWORD' > "./tools/rules/${domains[i]}/${domains[i]}.yaml"
