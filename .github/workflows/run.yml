@@ -16,10 +16,13 @@ jobs:
       - name: Set variables
         run: |
           echo "update_version=$(date -d '+8 hours' +%Y-%m-%d)" >> ${GITHUB_ENV}
-          echo "singbox_core_old_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/ {second_last=current; current=$0} END {print second_last}' | sed -n 's/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')" >> ${GITHUB_ENV}
-          echo "singbox_rules_old_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/ {second_last=current; current=$0} END {print second_last}' | sed -n 's/^<li>\([0-9]\+\).*/\1/p')" >> ${GITHUB_ENV}
-          echo "singbox_core_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/ {last=$0} END {print last}' | sed -n 's/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')" >> ${GITHUB_ENV}
-          echo "singbox_rules_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/ {last=$0} END {print last}' | sed -n 's/^<li>\([0-9]\+\).*/\1/p')" >> ${GITHUB_ENV}
+          echo "singbox_core_release_version=$(curl -sSL https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r '.tag_name' | sed -E 's/([0-9]+)$/0/')" >> ${GITHUB_ENV}
+          echo "singbox_core_last1_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/ {last=$0} END {print last}' | sed -n 's/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')" >> ${GITHUB_ENV}
+          echo "singbox_core_last2_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/{lines[++count]=$0} END{print lines[count-1]}' | sed -n 's/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')" >> ${GITHUB_ENV}
+          echo "singbox_core_last3_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/{lines[++count]=$0} END{print lines[count-2]}' | sed -n 's/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')" >> ${GITHUB_ENV}
+          echo "singbox_rules_last1_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/ {last=$0} END {print last}' | sed -n 's/^<li>\([0-9]\+\).*/\1/p')" >> ${GITHUB_ENV}
+          echo "singbox_rules_last2_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/{lines[++count]=$0} END{print lines[count-1]}' | sed -n 's/^<li>\([0-9]\+\).*/\1/p')" >> ${GITHUB_ENV}
+          echo "singbox_rules_last3_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/{lines[++count]=$0} END{print lines[count-2]}' | sed -n 's/^<li>\([0-9]\+\).*/\1/p')" >> ${GITHUB_ENV}
           echo "domains_download_url=https://github.com/DustinWin/domain-list-custom/releases/download/domains" >> ${GITHUB_ENV}
           echo "ips_download_url=https://github.com/DustinWin/geoip/releases/download/ips" >> ${GITHUB_ENV}
         shell: bash
@@ -118,23 +121,23 @@ jobs:
 
       - name: Get geoip relative files
         run: |
-          mkdir -p ./mihomo/ ./sing-box/
+          mkdir -p ./mihomo-geodata/ ./sing-box-geodata/
           # Download mihomo geoip files (.mmdb)
           mihomo_mmdb=($(curl -sSL https://api.github.com/repos/DustinWin/geoip/releases | grep '"browser_download_url"' | grep '.mmdb' | awk -F '"' '{print $4}'))
           count_mihomo_mmdb=${#mihomo_mmdb[@]}
           for ((i = 0; i < count_mihomo_mmdb; i++)); do
-            wget -P ./mihomo/ "${mihomo_mmdb[i]}"
+            wget -P ./mihomo-geodata/ "${mihomo_mmdb[i]}"
           done
 
           # Download mihomo other geoip files (except .mmdb)
-          mihomo_others=($(curl -sSL https://api.github.com/repos/DustinWin/geoip/releases | grep '"browser_download_url"' | grep '/mihomo/' | grep -v '.mmdb' | awk -F '"' '{print $4}'))
+          mihomo_others=($(curl -sSL https://api.github.com/repos/DustinWin/geoip/releases | grep '"browser_download_url"' | grep '/mihomo-geodata/' | grep -v '.mmdb' | awk -F '"' '{print $4}'))
           count_mihomo_others=${#mihomo_others[@]}
           for ((i = 0; i < count_mihomo_others; i++)); do
             wget -P ./community/ "${mihomo_others[i]}"
           done
 
           # Download sing-box all geoip files
-          singbox_all=($(curl -sSL https://api.github.com/repos/DustinWin/geoip/releases | grep '"browser_download_url"' | grep '/sing-box/' | awk -F '"' '{print $4}'))
+          singbox_all=($(curl -sSL https://api.github.com/repos/DustinWin/geoip/releases | grep '"browser_download_url"' | grep '/sing-box-geodata/' | awk -F '"' '{print $4}'))
           count_singbox_all=${#singbox_all[@]}
           for ((i = 0; i < count_singbox_all; i++)); do
             wget -P ./community/ "${singbox_all[i]}"
@@ -144,10 +147,10 @@ jobs:
         run: |
           cd ./community/ || exit 1
           for file in $(ls *.dat *.metadb); do
-            install -Dp "./${file}" ../mihomo/
+            install -Dp "./${file}" ../mihomo-geodata/
           done
           for file in $(ls *.db); do
-            install -Dp "./${file}" ../sing-box/
+            install -Dp "./${file}" ../sing-box-geodata/
           done
           rm -rf ../custom* ../community*
 
@@ -219,53 +222,87 @@ jobs:
           done
           rm -rf ./mihomo* ./domains/ ./ips/
 
-      - name: Generate `sing-box` rule_set (compatible)
+      - name: Judge sing-box version and generate `sing-box` rule_set (srs)
         run: |
-          wget "https://github.com/SagerNet/sing-box/releases/download/v${{ env.singbox_core_old_version }}/sing-box-${{ env.singbox_core_old_version }}-linux-amd64.tar.gz" -O - | tar -zxf - -C ./tools/
-          mv -f "./tools/sing-box-${{ env.singbox_core_old_version }}-linux-amd64/sing-box" ./tools/sing-box
+          if [[ "${{ env.singbox_core_last1_version }}" == "${{ env.singbox_core_release_version }}" ]]; then
+            # Setting `sing-box` core&ruleset environment variables
+            echo "singbox_core_old_version=${{ env.singbox_core_last2_version }}" >> $GITHUB_ENV
+            echo "singbox_core_new_version=${{ env.singbox_core_last1_version }}" >> $GITHUB_ENV
+            echo "singbox_ruleset_old_version=${{ env.singbox_rules_last2_version }}" >> $GITHUB_ENV
+            echo "singbox_ruleset_new_version=${{ env.singbox_rules_last1_version }}" >> $GITHUB_ENV
 
-          mkdir -p ./sing-box-ruleset-compatible/
-          cd ./tools/
-          sed -i 's/"version": 1/"version": ${{ env.singbox_rules_old_version }}/' ./convert.sh
-          chmod +x ./convert.sh && ./convert.sh
-          rm -rf ./sing-box* ./*.json
-          mv -f ./*.srs ../sing-box-ruleset-compatible/
+            # Generate `sing-box` rule_set (compatible)
+            wget "https://github.com/SagerNet/sing-box/releases/download/v${{ env.singbox_core_last2_version }}/sing-box-${{ env.singbox_core_last2_version }}-linux-amd64.tar.gz" -O - | tar -zxf - -C ./tools/
+            mv -f "./tools/sing-box-${{ env.singbox_core_last2_version }}-linux-amd64/sing-box" ./tools/sing-box
+            mkdir -p ./sing-box-ruleset-compatible/
+            cd ./tools/
+            sed -i 's/"version": 1/"version": ${{ env.singbox_rules_last2_version }}/' ./convert.sh
+            chmod +x ./convert.sh && ./convert.sh
+            rm -rf ./sing-box* ./*.json
+            mv -f ./*.srs ../sing-box-ruleset-compatible/
 
-      - name: Generate `sing-box` rule_set
-        run: |
-          wget "https://github.com/SagerNet/sing-box/releases/download/v${{ env.singbox_core_version }}/sing-box-${{ env.singbox_core_version }}-linux-amd64.tar.gz" -O - | tar -zxf - -C ./tools/
-          mv -f "./tools/sing-box-${{ env.singbox_core_version }}-linux-amd64/sing-box" ./tools/sing-box
+            # Generate `sing-box` rule_set
+            cd ../
+            wget "https://github.com/SagerNet/sing-box/releases/download/v${{ env.singbox_core_last1_version }}/sing-box-${{ env.singbox_core_last1_version }}-linux-amd64.tar.gz" -O - | tar -zxf - -C ./tools/
+            mv -f "./tools/sing-box-${{ env.singbox_core_last1_version }}-linux-amd64/sing-box" ./tools/sing-box
+            mkdir -p ./sing-box-ruleset/
+            cd ./tools/
+            sed -i 's/"version": ${{ env.singbox_rules_last2_version }}/"version": ${{ env.singbox_rules_last1_version }}/' ./convert.sh
+            chmod +x ./convert.sh && ./convert.sh
+            rm -rf ./sing-box* ./rules*
+            mv -f ./*.srs ../sing-box-ruleset/
+          else
+            # Setting `sing-box` core&ruleset environment variables
+            echo "singbox_core_old_version=${{ env.singbox_core_last3_version }}" >> $GITHUB_ENV
+            echo "singbox_core_new_version=${{ env.singbox_core_last2_version }}" >> $GITHUB_ENV
+            echo "singbox_ruleset_old_version=${{ env.singbox_rules_last3_version }}" >> $GITHUB_ENV
+            echo "singbox_ruleset_new_version=${{ env.singbox_rules_last2_version }}" >> $GITHUB_ENV
 
-          mkdir -p ./sing-box-ruleset/
-          cd ./tools/
-          sed -i 's/"version": ${{ env.singbox_rules_old_version }}/"version": ${{ env.singbox_rules_version }}/' ./convert.sh
-          chmod +x ./convert.sh && ./convert.sh
-          rm -rf ./sing-box* ./rules*
-          mv -f ./*.srs ../sing-box-ruleset/
+            # Generate `sing-box` rule_set (compatible)
+            wget "https://github.com/SagerNet/sing-box/releases/download/v${{ env.singbox_core_last3_version }}/sing-box-${{ env.singbox_core_last3_version }}-linux-amd64.tar.gz" -O - | tar -zxf - -C ./tools/
+            mv -f "./tools/sing-box-${{ env.singbox_core_last3_version }}-linux-amd64/sing-box" ./tools/sing-box
+            mkdir -p ./sing-box-ruleset-compatible/
+            cd ./tools/
+            sed -i 's/"version": 1/"version": ${{ env.singbox_rules_last3_version }}/' ./convert.sh
+            chmod +x ./convert.sh && ./convert.sh
+            rm -rf ./sing-box* ./*.json
+            mv -f ./*.srs ../sing-box-ruleset-compatible/
 
-      - name: Release and upload `mihomo` assets
+            # Generate `sing-box` rule_set
+            cd ../
+            wget "https://github.com/SagerNet/sing-box/releases/download/v${{ env.singbox_core_last2_version }}/sing-box-${{ env.singbox_core_last2_version }}-linux-amd64.tar.gz" -O - | tar -zxf - -C ./tools/
+            mv -f "./tools/sing-box-${{ env.singbox_core_last2_version }}-linux-amd64/sing-box" ./tools/sing-box
+            mkdir -p ./sing-box-ruleset/
+            cd ./tools/
+            sed -i 's/"version": ${{ env.singbox_rules_last3_version }}/"version": ${{ env.singbox_rules_last2_version }}/' ./convert.sh
+            chmod +x ./convert.sh && ./convert.sh
+            rm -rf ./sing-box* ./rules*
+            mv -f ./*.srs ../sing-box-ruleset/
+          fi
+
+      - name: Release and upload `mihomo-geodata` assets
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          release_name: mihomo
-          tag: mihomo
+          release_name: mihomo-geodata
+          tag: mihomo-geodata
           overwrite: true
           body: |
-            [mihomo](https://github.com/MetaCubeX/mihomo) geodata 文件
+            [mihomo 内核](https://github.com/MetaCubeX/mihomo) geodata 文件
             geodata 文件更新于 ${{ env.update_version }}
           file_glob: true
-          file: ./mihomo/*
+          file: ./mihomo-geodata/*
 
-      - name: Commit and push `mihomo` branch
+      - name: Commit and push `mihomo-geodata` branch
         run: |
-          cd ./mihomo/ || exit 1
+          cd ./mihomo-geodata/ || exit 1
           git init
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git checkout -b mihomo
-          git add . && git commit -m "mihomo geodata 文件更新于 ${update_version}"
+          git checkout -b mihomo-geodata
+          git add . && git commit -m "mihomo 内核 geodata 文件更新于 ${update_version}"
           git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
-          git push -f origin mihomo
+          git push -f origin mihomo-geodata
 
       - name: Release and upload `mihomo-ruleset` assets
         uses: svenstaro/upload-release-action@v2
@@ -275,7 +312,7 @@ jobs:
           tag: mihomo-ruleset
           overwrite: true
           body: |
-            [mihomo](https://github.com/MetaCubeX/mihomo) rule-set 规则集文件
+            [mihomo 内核](https://github.com/MetaCubeX/mihomo) rule-set 规则集文件
             规则集文件更新于 ${{ env.update_version }}
           file_glob: true
           file: ./mihomo-ruleset/*
@@ -287,33 +324,33 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git checkout -b mihomo-ruleset
-          git add . && git commit -m "mihomo rule-set 规则集文件更新于 ${update_version}"
+          git add . && git commit -m "mihomo 内核 rule-set 规则集文件更新于 ${update_version}"
           git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
           git push -f origin mihomo-ruleset
 
-      - name: Release and upload `sing-box` assets
+      - name: Release and upload `sing-box-geodata` assets
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          release_name: sing-box
-          tag: sing-box
+          release_name: sing-box-geodata
+          tag: sing-box-geodata
           overwrite: true
           body: |
-            [sing-box](https://github.com/SagerNet/sing-box) geodata 文件
+            [sing-box 内核](https://github.com/SagerNet/sing-box) geodata 文件
             geodata 文件更新于 ${{ env.update_version }}
           file_glob: true
-          file: ./sing-box/*
+          file: ./sing-box-geodata/*
 
-      - name: Commit and push `sing-box` branch
+      - name: Commit and push `sing-box-geodata` branch
         run: |
-          cd ./sing-box/ || exit 1
+          cd ./sing-box-geodata/ || exit 1
           git init
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git checkout -b sing-box
-          git add . && git commit -m "sing-box geodata 文件更新于 ${update_version}"
+          git checkout -b sing-box-geodata
+          git add . && git commit -m "sing-box 内核 geodata 文件更新于 ${update_version}"
           git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
-          git push -f origin sing-box
+          git push -f origin sing-box-geodata
 
       - name: Release and upload `sing-box-ruleset-compatible` assets
         uses: svenstaro/upload-release-action@v2
@@ -323,8 +360,8 @@ jobs:
           tag: sing-box-ruleset-compatible
           overwrite: true
           body: |
-            [sing-box](https://github.com/SagerNet/sing-box) rule_set 规则集文件
-            适用于 sing-box v${{ env.singbox_core_old_version }}-v${{ env.singbox_core_version }}（不包含）版本的内核（`"version": ${{ env.singbox_rules_old_version }}`）
+            [sing-box 内核](https://github.com/SagerNet/sing-box) rule_set 规则集文件
+            适用于 v${{ env.singbox_core_old_version }}-v${{ env.singbox_core_new_version }}（不包含）系列版本的 sing-box 内核（`"version": ${{ env.singbox_ruleset_old_version }}`）
             规则集文件更新于 ${{ env.update_version }}
           file_glob: true
           file: ./sing-box-ruleset-compatible/*
@@ -336,7 +373,7 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git checkout -b sing-box-ruleset-compatible
-          git add . && git commit -m "sing-box rule_set 规则集文件更新于 ${update_version}"
+          git add . && git commit -m "sing-box 内核 rule_set 规则集文件更新于 ${update_version}"
           git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
           git push -f origin sing-box-ruleset-compatible
 
@@ -348,8 +385,8 @@ jobs:
           tag: sing-box-ruleset
           overwrite: true
           body: |
-            [sing-box](https://github.com/SagerNet/sing-box) rule_set 规则集文件
-            适用于 sing-box v${{ env.singbox_core_version }}+ 版本的内核（`"version": ${{ env.singbox_rules_version }}`）
+            [sing-box 内核](https://github.com/SagerNet/sing-box) rule_set 规则集文件
+            适用于 v${{ env.singbox_core_new_version }} 系列版本的 sing-box 内核（`"version": ${{ env.singbox_ruleset_new_version }}`）
             规则集文件更新于 ${{ env.update_version }}
           file_glob: true
           file: ./sing-box-ruleset/*
@@ -361,19 +398,19 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git checkout -b sing-box-ruleset
-          git add . && git commit -m "sing-box rule_set 规则集文件更新于 ${update_version}"
+          git add . && git commit -m "sing-box 内核 rule_set 规则集文件更新于 ${update_version}"
           git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
           git push -f origin sing-box-ruleset
 
       - name: Purge jsDelivr CDN
         run: |
-          cd ./mihomo/ || exit 1
+          cd ./mihomo-geodata/ || exit 1
           for file in $(ls); do
-            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@mihomo/${file}"
+            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@mihomo-geodata/${file}"
           done
-          cd ../sing-box/ || exit 1
+          cd ../sing-box-geodata/ || exit 1
           for file in $(ls); do
-            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@sing-box/${file}"
+            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@sing-box-geodata/${file}"
           done
           cd ../mihomo-ruleset/ || exit 1
           for file in $(ls); do
