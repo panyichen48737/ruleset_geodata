@@ -6,36 +6,36 @@ for ((i = 0; i < ${#list[@]}; i++)); do
   mkdir -p ${list[i]}
   # 归类
   # android package
-  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | grep 'PROCESS-NAME,' | grep -v '\.exe' | grep -v '/' | grep '\.')" ]; then
-    cat ./rules/${list[i]}/${list[i]}.list |  grep 'PROCESS-NAME,' | grep -v '\.exe' | grep -v '/' | grep '\.' | sed 's/PROCESS-NAME,//' > ${list[i]}/package.json
+  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | awk '/^PROCESS-NAME,/ && !/\.exe/ && !/\// && /\./')" ]; then
+    cat ./rules/${list[i]}/${list[i]}.list |  awk '/^PROCESS-NAME,/ && !/\.exe/ && !/\// && /\./' | sed 's/PROCESS-NAME,//' > ${list[i]}/package.json
   fi
   # process name
-  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | grep 'PROCESS-NAME,' | grep -v '/' | grep -v '\.')" ]; then
-    cat ./rules/${list[i]}/${list[i]}.list | grep 'PROCESS-NAME,' | grep -v '/' | grep -v '\.' | sed 's/PROCESS-NAME,//' > ${list[i]}/process.json
+  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | awk '/^PROCESS-NAME,/ && !/\// && !/\./')" ]; then
+    cat ./rules/${list[i]}/${list[i]}.list | awk '/^PROCESS-NAME,/ && !/\// && !/\./' | sed 's/PROCESS-NAME,//' > ${list[i]}/process.json
   fi
   # executable name
-  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | grep 'PROCESS-NAME,' |  grep '\.exe')" ]; then
-    cat ./rules/${list[i]}/${list[i]}.list | grep 'PROCESS-NAME,' |  grep '\.exe' | sed 's/PROCESS-NAME,//' >> ${list[i]}/process.json
+  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | awk '/^PROCESS-NAME,/ && /\.exe/' )" ]; then
+    cat ./rules/${list[i]}/${list[i]}.list | awk '/^PROCESS-NAME,/ && /\.exe/'  | sed 's/PROCESS-NAME,//' >> ${list[i]}/process.json
   fi
   # domain
-  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | grep 'DOMAIN,')" ]; then
-    cat ./rules/${list[i]}/${list[i]}.list | grep 'DOMAIN,' | sed 's/DOMAIN,//' > ${list[i]}/domain.json
+  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | awk '/^DOMAIN,/')" ]; then
+    cat ./rules/${list[i]}/${list[i]}.list | awk '/^DOMAIN,/' | sed 's/DOMAIN,//' > ${list[i]}/domain.json
   fi
   # suffix
-  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | grep 'DOMAIN-SUFFIX,')" ]; then
-    cat ./rules/${list[i]}/${list[i]}.list | grep 'DOMAIN-SUFFIX,' | sed 's/DOMAIN-SUFFIX,//' > ${list[i]}/suffix.json
+  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | awk '/^DOMAIN-SUFFIX,/')" ]; then
+    cat ./rules/${list[i]}/${list[i]}.list | awk '/^DOMAIN-SUFFIX,/' | sed 's/DOMAIN-SUFFIX,//' > ${list[i]}/suffix.json
   fi
   # keyword
-  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | grep 'DOMAIN-KEYWORD,')" ]; then
-    cat ./rules/${list[i]}/${list[i]}.list | grep 'DOMAIN-KEYWORD,' | sed 's/DOMAIN-KEYWORD,//' > ${list[i]}/keyword.json
+  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | awk '/^DOMAIN-KEYWORD,/')" ]; then
+    cat ./rules/${list[i]}/${list[i]}.list | awk '/^DOMAIN-KEYWORD,/' | sed 's/DOMAIN-KEYWORD,//' > ${list[i]}/keyword.json
   fi
   # regex
-  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | grep 'DOMAIN-REGEX,')" ]; then
-    cat ./rules/${list[i]}/${list[i]}.list | grep 'DOMAIN-REGEX,' | sed -e 's/DOMAIN-REGEX,//' -e 's/\\/\\\\/g' > ${list[i]}/regex.json
+  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | awk '/^DOMAIN-REGEX,/')" ]; then
+    cat ./rules/${list[i]}/${list[i]}.list | awk '/^DOMAIN-REGEX,/' | sed -e 's/DOMAIN-REGEX,//' -e 's/\\/\\\\/g' > ${list[i]}/regex.json
   fi
   # ipcidr
-  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | grep 'IP-CIDR')" ]; then
-    cat ./rules/${list[i]}/${list[i]}.list | grep 'IP-CIDR' | awk -F ',' '{print $2}' > ${list[i]}/ipcidr.json
+  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | awk '/^IP-CIDR.*,/')" ]; then
+    cat ./rules/${list[i]}/${list[i]}.list | awk '/^IP-CIDR.*,/' | sed 's/.*,//' > ${list[i]}/ipcidr.json
   fi
   # 转成json格式
   # android package
