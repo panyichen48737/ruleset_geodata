@@ -432,28 +432,7 @@ jobs:
           git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
           git push -f origin sing-box-ruleset
 
-      - name: Purge jsDelivr CDN
-        run: |
-          cd ./mihomo-geodata/ || exit 1
-          for file in $(ls); do
-            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@mihomo-geodata/${file}"
-          done
-          cd ../sing-box-geodata/ || exit 1
-          for file in $(ls); do
-            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@sing-box-geodata/${file}"
-          done
-          cd ../mihomo-ruleset/ || exit 1
-          for file in $(ls); do
-            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@mihomo-ruleset/${file}"
-          done
-          cd ../sing-box-ruleset-compatible/ || exit 1
-          for file in $(ls); do
-            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@sing-box-ruleset-compatible/${file}"
-          done
-          cd ../sing-box-ruleset/ || exit 1
-          for file in $(ls); do
-            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@sing-box-ruleset/${file}"
-          done
+      
 
       - name: Delete old workflow runs
         uses: Mattraks/delete-workflow-runs@v2
