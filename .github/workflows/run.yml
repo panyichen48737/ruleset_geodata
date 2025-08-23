@@ -23,8 +23,8 @@ jobs:
           echo "singbox_rules_last1_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/ {last=$0} END {print last}' | sed -n 's/^<li>\([0-9]\+\).*/\1/p')" >> ${GITHUB_ENV}
           echo "singbox_rules_last2_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/{lines[++count]=$0} END{print lines[count-1]}' | sed -n 's/^<li>\([0-9]\+\).*/\1/p')" >> ${GITHUB_ENV}
           echo "singbox_rules_last3_version=$(curl -sSL https://raw.githubusercontent.com/SagerNet/sing-box/docs/configuration/rule-set/source-format/index.html | awk '/<li>/{lines[++count]=$0} END{print lines[count-2]}' | sed -n 's/^<li>\([0-9]\+\).*/\1/p')" >> ${GITHUB_ENV}
-          echo "domains_download_url=https://github.com/DustinWin/domain-list-custom/releases/download/domains" >> ${GITHUB_ENV}
-          echo "ips_download_url=https://github.com/DustinWin/geoip/releases/download/ips" >> ${GITHUB_ENV}
+          echo "domains_download_url=https://github.com/panyichen48737/domain-list-custom/releases/download/domains" >> ${GITHUB_ENV}
+          echo "ips_download_url=https://github.com/panyichen48737/geoip/releases/download/ips" >> ${GITHUB_ENV}
         shell: bash
 
       - name: Clone Repository
@@ -51,8 +51,8 @@ jobs:
       - name: Generate `mihomo` geodata
         run: |
           mkdir -p ./community/mydata/
-          archs1=(private ads trackerslist microsoft-cn apple-cn google-cn games-cn media games ai networktest tld-proxy proxy cn)
-          archs2=(private ads trackerslist microsoft-cn apple-cn google-cn games-cn ai networktest tld-proxy proxy cn)
+          archs1=(private trackerslist microsoft-cn apple-cn apple-proxy google-cn games-cn games ai networktest netflix disney hbo primevideo appletv youtube tiktok bilibili spotify tld-proxy tld-cn proxy cn)
+          archs2=(private trackerslist microsoft-cn apple-cn google-cn games-cn ai networktest tld-proxy proxy cn)
           archs3=(private microsoft-cn apple-cn google-cn games-cn tld-proxy proxy cn-lite)
 
           # Generate `mihomo` geosite-all.dat
@@ -157,9 +157,9 @@ jobs:
       - name: Download `mihomo` rule-set files
         run: |
           mkdir -p ./mihomo-ruleset/
-          domains=(ads trackerslist microsoft-cn apple-cn google-cn games-cn netflix disney max primevideo appletv youtube tiktok bilibili spotify media games ai tld-proxy proxy cn cn-lite)
-          archs=(applications networktest)
-          ips=(netflixip mediaip gamesip privateip cnip telegramip)
+          domains=(trackerslist bing onedrive apple-proxy microsoft-cn apple-cn google-cn games-cn netflix disney hbo primevideo appletv youtube tiktok bilibili spotify games ai tld-proxy tld-cn proxy cn cn-lite)
+          archs=(networktest)
+          ips=(netflixip gamesip privateip cnip telegramip)
 
           for domain in "${domains[@]}"; do
             mkdir -p "./tools/domains/${domain}/"
@@ -194,9 +194,9 @@ jobs:
 
       - name: Download `sing-box` rule_set files
         run: |
-          domains=(private ads trackerslist microsoft-cn apple-cn google-cn games-cn netflix disney max primevideo appletv youtube tiktok bilibili spotify media games ai tld-proxy proxy cn cn-lite)
-          archs=(applications networktest)
-          ips=(netflixip mediaip gamesip privateip cnip telegramip)
+          domains=(private trackerslist microsoft-cn onedrive bing apple-proxy apple-cn google-cn games-cn netflix disney hbo primevideo appletv youtube tiktok bilibili spotify games ai tld-proxy tld-cn proxy cn cn-lite)
+          archs=( networktest)
+          ips=(netflixip gamesip privateip cnip telegramip)
 
           for domain in "${domains[@]}"; do
             mkdir -p "./tools/rules/${domain}/"
