@@ -1,0 +1,30 @@
+name: Check README
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - "README.md"
+      - "config/tags.sh"
+      - "tools/check_readme.py"
+  pull_request:
+    paths:
+      - "README.md"
+      - "config/tags.sh"
+      - "tools/check_readme.py"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone Repository
+        uses: actions/checkout@v7
+
+      # README 的 tag 清单以前和工作流各写一份，漂过一次。这里在 CI 里卡住。
+      - name: Check README against config/tags.sh
+        run: python3 tools/check_readme.py

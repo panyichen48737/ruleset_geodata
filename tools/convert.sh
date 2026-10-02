@@ -1,111 +1,96 @@
 #!/bin/bash
+# 把 ./rules/<tag>/<tag>.list 转成 sing-box rule_set 的 .json + .srs
+#
+# 用法: ./convert.sh <ruleset version>
+#   version 是 sing-box 规则的 schema 版本（一个整数），从命令行传入。
+#   旧实现靠 sed 改自己的源码来注入 version：抓文档失败时 env 为空，会把
+#   "version": 1 改成 "version":  并静默产出非法 srs。现在空值直接失败。
+set -euo pipefail
 
-# 处理文件
-list=($(ls ./rules/))
-for ((i = 0; i < ${#list[@]}; i++)); do
-  mkdir -p ${list[i]}
-  # 归类
-  # android package
-  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | awk '/^PROCESS-NAME,/ && !/\.exe/ && !/\// && /\./')" ]; then
-    cat ./rules/${list[i]}/${list[i]}.list |  awk '/^PROCESS-NAME,/ && !/\.exe/ && !/\// && /\./' | sed 's/PROCESS-NAME,//' > ${list[i]}/package.json
-  fi
-  # process name
-  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | awk '/^PROCESS-NAME,/ && !/\// && !/\./')" ]; then
-    cat ./rules/${list[i]}/${list[i]}.list | awk '/^PROCESS-NAME,/ && !/\// && !/\./' | sed 's/PROCESS-NAME,//' > ${list[i]}/process.json
-  fi
-  # executable name
-  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | awk '/^PROCESS-NAME,/ && /\.exe/' )" ]; then
-    cat ./rules/${list[i]}/${list[i]}.list | awk '/^PROCESS-NAME,/ && /\.exe/'  | sed 's/PROCESS-NAME,//' >> ${list[i]}/process.json
-  fi
-  # domain
-  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | awk '/^DOMAIN,/')" ]; then
-    cat ./rules/${list[i]}/${list[i]}.list | awk '/^DOMAIN,/' | sed 's/DOMAIN,//' > ${list[i]}/domain.json
-  fi
-  # suffix
-  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | awk '/^DOMAIN-SUFFIX,/')" ]; then
-    cat ./rules/${list[i]}/${list[i]}.list | awk '/^DOMAIN-SUFFIX,/' | sed 's/DOMAIN-SUFFIX,//' > ${list[i]}/suffix.json
-  fi
-  # keyword
-  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | awk '/^DOMAIN-KEYWORD,/')" ]; then
-    cat ./rules/${list[i]}/${list[i]}.list | awk '/^DOMAIN-KEYWORD,/' | sed 's/DOMAIN-KEYWORD,//' > ${list[i]}/keyword.json
-  fi
-  # regex
-  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | awk '/^DOMAIN-REGEX,/')" ]; then
-    cat ./rules/${list[i]}/${list[i]}.list | awk '/^DOMAIN-REGEX,/' | sed -e 's/DOMAIN-REGEX,//' -e 's/\\/\\\\/g' > ${list[i]}/regex.json
-  fi
-  # ipcidr
-  if [ -n "$(cat ./rules/${list[i]}/${list[i]}.list | awk '/^IP-CIDR.*,/')" ]; then
-    cat ./rules/${list[i]}/${list[i]}.list | awk '/^IP-CIDR.*,/' | sed 's/.*,//' > ${list[i]}/ipcidr.json
-  fi
-  # 转成json格式
-  # android package
-  if [ -f "${list[i]}/package.json" ]; then
-    sed -i 's/.*/        "&",/' ${list[i]}/package.json
-    sed -i '1s/^/      "package_name": [\n/' ${list[i]}/package.json
-    sed -i '$s/,$/\n      ],/' ${list[i]}/package.json
-  fi
-  # process name & executable name
-  if [ -f "${list[i]}/process.json" ]; then
-    sed -i 's/.*/        "&",/' ${list[i]}/process.json
-    sed -i '1s/^/      "process_name": [\n/' ${list[i]}/process.json
-    sed -i '$s/,$/\n      ],/' ${list[i]}/process.json
-  fi
-  # domain
-  if [ -f "${list[i]}/domain.json" ]; then
-    sed -i 's/.*/        "&",/' ${list[i]}/domain.json
-    sed -i '1s/^/      "domain": [\n/' ${list[i]}/domain.json
-    sed -i '$s/,$/\n      ],/' ${list[i]}/domain.json
-  fi
-  # suffix
-  if [ -f "${list[i]}/suffix.json" ]; then
-    sed -i 's/.*/        "&",/' ${list[i]}/suffix.json
-    sed -i '1s/^/      "domain_suffix": [\n/' ${list[i]}/suffix.json
-    sed -i '$s/,$/\n      ],/' ${list[i]}/suffix.json
-  fi
-  # keyword
-  if [ -f "${list[i]}/keyword.json" ]; then
-    sed -i 's/.*/        "&",/' ${list[i]}/keyword.json
-    sed -i '1s/^/      "domain_keyword": [\n/' ${list[i]}/keyword.json
-    sed -i '$s/,$/\n      ],/' ${list[i]}/keyword.json
-  fi
-  # regex
-  if [ -f "${list[i]}/regex.json" ]; then
-    sed -i 's/.*/        "&",/' ${list[i]}/regex.json
-    sed -i '1s/^/      "domain_regex": [\n/' ${list[i]}/regex.json
-    sed -i '$s/,$/\n      ],/' ${list[i]}/regex.json
-  fi
-  # ipcidr
-  if [ -f "${list[i]}/ipcidr.json" ]; then
-    sed -i 's/.*/        "&",/' ${list[i]}/ipcidr.json
-    sed -i '1s/^/      "ip_cidr": [\n/' ${list[i]}/ipcidr.json
-    sed -i '$s/,$/\n      ],/' ${list[i]}/ipcidr.json
-  fi
-  # 合并文件
-  if [ -f "${list[i]}/package.json" -a -f "${list[i]}/process.json" ]; then
-    mv -f ${list[i]}/package.json ${list[i]}.json
-    sed -i '$s/,$/\n    },\n    {/' ${list[i]}.json
-    cat ${list[i]}/process.json >> ${list[i]}.json
-    rm -f ${list[i]}/process.json
-  elif [ -f "${list[i]}/package.json" ]; then
-    mv -f ${list[i]}/package.json ${list[i]}.json
-  elif [ -f "${list[i]}/process.json" ]; then
-    mv -f ${list[i]}/process.json ${list[i]}.json
-  fi
+version="${1:-}"
+case "${version}" in
+  ''|*[!0-9]*)
+    echo "用法: $0 <ruleset version 整数>；实际拿到 '${version}'" >&2
+    exit 1
+    ;;
+esac
 
-  if [ "$(ls ${list[i]})" = "" ]; then
-    sed -i '1s/^/{\n  "version": 1,\n  "rules": [\n    {\n/' ${list[i]}.json
-  elif [ -f "${list[i]}.json" ]; then
-    sed -i '1s/^/{\n  "version": 1,\n  "rules": [\n    {\n/' ${list[i]}.json
-    sed -i '$s/,$/\n    },\n    {/' ${list[i]}.json
-    cat ${list[i]}/* >> ${list[i]}.json
-  else
-    cat ${list[i]}/* >> ${list[i]}.json
-    sed -i '1s/^/{\n  "version": 1,\n  "rules": [\n    {\n/' ${list[i]}.json
-  fi
-  sed -i '$s/,$/\n    }\n  ]\n}/' ${list[i]}.json
+command -v python3 >/dev/null || { echo "需要 python3" >&2; exit 1; }
 
-  rm -rf ${list[i]}
+shopt -s nullglob
+count=0
 
-  # 编译成 .srs 格式
-  ./sing-box rule-set compile --output ${list[i]}.srs ${list[i]}.json
+for dir in ./rules/*/; do
+  tag="$(basename "${dir}")"
+  src="${dir}${tag}.list"
+  [ -f "${src}" ] || { echo "缺少 ${src}" >&2; exit 1; }
+
+  # 一次读取按类型分流（旧实现是 7 遍 cat|awk），交给 python 组装 JSON（转义/合法性由 json 模块保证）
+  python3 - "${version}" "${src}" "${tag}.json" <<'PY'
+import json
+import sys
+
+version, src, out = int(sys.argv[1]), sys.argv[2], sys.argv[3]
+
+package, process, exe = [], [], []
+domain, suffix, keyword, regex, ipcidr = [], [], [], [], []
+
+with open(src, encoding="utf-8") as f:
+    for raw in f:
+        line = raw.rstrip("\n")
+        if line.startswith("PROCESS-NAME,"):
+            v = line[13:]
+            if ".exe" in v:
+                exe.append(v)
+            elif "/" in v:
+                continue          # 路径形式的进程名，sing-box 用不了
+            elif "." in v:
+                package.append(v)  # android 包名
+            else:
+                process.append(v)
+        elif line.startswith("DOMAIN,"):
+            domain.append(line[7:])
+        elif line.startswith("DOMAIN-SUFFIX,"):
+            suffix.append(line[14:])
+        elif line.startswith("DOMAIN-KEYWORD,"):
+            keyword.append(line[15:])
+        elif line.startswith("DOMAIN-REGEX,"):
+            regex.append(line[13:])
+        elif line.startswith("IP-CIDR") and "," in line:
+            # IP-CIDR 与 IP-CIDR6 都要（v6 占 ip 列表的一半以上）
+            ipcidr.append(line.split(",")[-1])
+
+# 分组与原产物一致：package_name、process_name 各自一个对象（或语义），
+# domain 匹配器系列合并进同一个对象
+rules = []
+if package:
+    rules.append({"package_name": package})
+if process or exe:
+    rules.append({"process_name": process + exe})
+domain_rule = {}
+if domain:
+    domain_rule["domain"] = domain
+if suffix:
+    domain_rule["domain_suffix"] = suffix
+if keyword:
+    domain_rule["domain_keyword"] = keyword
+if regex:
+    domain_rule["domain_regex"] = regex
+if ipcidr:
+    domain_rule["ip_cidr"] = ipcidr
+if domain_rule:
+    rules.append(domain_rule)
+
+with open(out, "w", encoding="utf-8", newline="\n") as f:
+    json.dump({"version": version, "rules": rules}, f, ensure_ascii=False, indent=2)
+    f.write("\n")
+PY
+
+  ./sing-box rule-set compile --output "${tag}.srs" "${tag}.json"
+
+  rm -rf "${dir}"
+  count=$((count + 1))
 done
+
+[ "${count}" -gt 0 ] || { echo "./rules/ 下没有找到任何 tag" >&2; exit 1; }
+echo "已转换 ${count} 个 rule_set"

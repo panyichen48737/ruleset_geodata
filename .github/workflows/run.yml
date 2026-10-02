@@ -1,6 +1,10 @@
 name: Build ruleset and geodata
 on:
   workflow_dispatch:
+  # 数据仓库（domain-list-custom / geoip）构建成功后主动触发，避免 03:00 定时跑在
+  # 数据之前 —— 它们的定时是 02:00 CST，一旦延迟或失败，本仓就会整轮取到旧数据且无信号。
+  repository_dispatch:
+    types: [data-updated]
   schedule:
     - cron: "0 3 * * *"
       timezone: "Asia/Shanghai"
@@ -9,36 +13,58 @@ on:
       - master
     paths-ignore:
       - "**/README.md"
-      - "**/*.ini"
+      # 改 workflow 本身不该触发一次真实构建：Dependabot 每天扫 github-actions，
+      # 每次依赖 bump 合并进 master 都会白跑一趟 68MB force push + 219 次 CDN purge。
+      # config/** 不在忽略之列 —— 改 tag 清单本来就该重建。
+      - ".github/**"
 
 permissions:
   contents: write
-  actions: write
+
+# 三路触发（push / schedule / 手动）并发时会同时 force push 同一批分支，互相覆盖。
+# 串行化，且不取消进行中的一轮（取消会留下 push 了一半的分支状态）。
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Set variables
+        shell: bash
         run: |
+          # 同一份源文档只拉一次，后面 4 个变量都从本地文件解析
+          doc="${RUNNER_TEMP}/singbox-source-format.md"
+          curl -fsSL --retry 3 --retry-delay 5 -o "${doc}" \
+            https://raw.githubusercontent.com/reF1nd/sing-box/reF1nd-testing/docs/configuration/rule-set/source-format.md
+
+          core_release=$(curl -fsSL --retry 3 --retry-delay 5 "https://api.github.com/repos/reF1nd/sing-box/tags?per_page=100" \
+            | jq -r '.[].name' | grep -P '^v?[0-9]+\.[0-9]+\.[0-9]+-reF1nd.*' | head -n 1 | awk -F'[v.-]' '{print $2"."$3".0"}')
+          core_latest=$(awk '/\*/ {last=$0} END {print last}' "${doc}" | sed -n 's/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')
+          core_compatible=$(awk '/\*/{lines[++count]=$0} END{print lines[count-1]}' "${doc}" | sed -n 's/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')
+          rules_latest=$(awk '/\*/ {last=$0} END {print last}' "${doc}" | sed -n 's/^* \([0-9]\+\):.*/\1/p')
+          rules_compatible=$(awk '/\*/{lines[++count]=$0} END{print lines[count-1]}' "${doc}" | sed -n 's/^* \([0-9]\+\):.*/\1/p')
+
+          # 解析为空会让下游把 "version": 生成成非法值并静默产出坏 srs，这里直接失败
+          for pair in \
+            "singbox_core_release_version=${core_release}" \
+            "singbox_core_latest_version=${core_latest}" \
+            "singbox_core_compatible_version=${core_compatible}" \
+            "singbox_rules_latest_version=${rules_latest}" \
+            "singbox_rules_compatible_version=${rules_compatible}"; do
+            name="${pair%%=*}"; value="${pair#*=}"
+            [ -n "${value}" ] || { echo "::error::${name} 解析为空，源文档格式可能已变"; exit 1; }
+            echo "${name}=${value}" >> "${GITHUB_ENV}"
+          done
+
           echo "update_version=$(date -d '+8 hours' +%Y-%m-%d)" >> "${GITHUB_ENV}"
-          echo "singbox_core_release_version=$(curl -fsSL https://api.github.com/repos/reF1nd/sing-box/tags?per_page=100 | jq -r '.[].name' | grep -P '^v?[0-9]+\.[0-9]+\.[0-9]+-reF1nd.*' | head -n 1 | awk -F'[v.-]' '{print $2"."$3".0"}')" >> "${GITHUB_ENV}"
-          echo "singbox_core_latest_version=$(curl -fsSL https://raw.githubusercontent.com/reF1nd/sing-box/reF1nd-testing/docs/configuration/rule-set/source-format.md | awk '/\*/ {last=$0} END {print last}' | sed -n 's/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')" >> "${GITHUB_ENV}"
-          echo "singbox_core_compatible_version=$(curl -fsSL https://raw.githubusercontent.com/reF1nd/sing-box/reF1nd-testing/docs/configuration/rule-set/source-format.md | awk '/\*/{lines[++count]=$0} END{print lines[count-1]}' | sed -n 's/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')" >> "${GITHUB_ENV}"
-          echo "singbox_rules_latest_version=$(curl -fsSL https://raw.githubusercontent.com/reF1nd/sing-box/reF1nd-testing/docs/configuration/rule-set/source-format.md | awk '/\*/ {last=$0} END {print last}' | sed -n 's/^* \([0-9]\+\):.*/\1/p')" >> "${GITHUB_ENV}"
-          echo "singbox_rules_compatible_version=$(curl -fsSL https://raw.githubusercontent.com/reF1nd/sing-box/reF1nd-testing/docs/configuration/rule-set/source-format.md | awk '/\*/{lines[++count]=$0} END{print lines[count-1]}' | sed -n 's/^* \([0-9]\+\):.*/\1/p')" >> "${GITHUB_ENV}"
           echo "domains_download_url=https://github.com/panyichen48737/domain-list-custom/releases/download/domains" >> "${GITHUB_ENV}"
           echo "ips_download_url=https://github.com/panyichen48737/geoip/releases/download/ips" >> "${GITHUB_ENV}"
-        shell: bash
 
       - name: Clone Repository
         uses: actions/checkout@v7
-
-      - name: Checkout `DustinWin/domain-list-custom`
-        uses: actions/checkout@v7
-        with:
-          repository: DustinWin/domain-list-custom
-          path: custom
 
       - name: Checkout `v2fly/domain-list-community`
         uses: actions/checkout@v7
@@ -49,125 +75,144 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v7
         with:
-          go-version-file: ./custom/go.mod
-          cache-dependency-path: ./custom/go.sum
+          # 真正编译的是 ./community（声明 go 1.25.x），不是 ./custom
+          go-version-file: ./community/go.mod
+          cache-dependency-path: ./community/go.sum
+
+      - name: Download source lists
+        shell: bash
+        run: |
+          source ./config/tags.sh
+          mkdir -p ./src/
+          # 每个列表只下一次，geodata / mihomo / sing-box 三条链路都从 ./src 派生
+          # （旧写法三条链路各下各的，同一样文件最多被请求 4 次）
+          for domain in "${RULESET_DOMAINS[@]}"; do
+            curl -fsSL --retry 3 --retry-delay 5 -o "./src/${domain}.list" "${domains_download_url}/${domain}.list"
+          done
+          for ip in "${RULESET_IPS[@]}"; do
+            curl -fsSL --retry 3 --retry-delay 5 -o "./src/${ip}.list" "${ips_download_url}/${ip}.list"
+          done
+          if find ./src -type f -empty | grep -q .; then
+            echo "::error::./src 下存在空文件"; find ./src -type f -empty; exit 1
+          fi
+          echo "已下载 $(find ./src -type f | wc -l) 个源列表"
 
       - name: Generate `mihomo` geodata
         shell: bash
         run: |
-          mkdir -p ./tmp/ ./community/mydata/
-          archs1=(private trackerslist microsoft-cn apple-cn apple-proxy google-cn games-cn games ai networktest netflix disney hbo primevideo appletv youtube tiktok bilibili spotify tld-proxy tld-cn proxy cn)
-          archs2=(private trackerslist microsoft-cn apple-cn google-cn games-cn ai networktest tld-proxy proxy cn)
-          archs3=(private microsoft-cn apple-cn google-cn games-cn tld-proxy proxy cn-lite)
+          source ./config/tags.sh
+          export ARCH1="${GEODATA_ARCH1[*]}" ARCH2="${GEODATA_ARCH2[*]}" ARCH3="${GEODATA_ARCH3[*]}"
 
-          # Ready for `fakeip-filter` and `fakeip-filter-lite`
-          curl -fsSL "${domains_download_url}/fakeip-filter.list" | awk '!/^DOMAIN-REGEX,/' | sed -e 's/DOMAIN,/full:/' -e 's/DOMAIN-SUFFIX,//' > ./tmp/fakeip-filter.txt
-          cat <<EOF >> ./tmp/fakeip-filter.txt
-          keyword:ntp
-          keyword:stun
-          keyword:time
-          EOF
-          curl -fsSL "${domains_download_url}/fakeip-filter.list" | awk '/^DOMAIN-REGEX,/ && !/ntp|stun|time/' | sed 's/DOMAIN-REGEX,/regexp:/' >> ./tmp/fakeip-filter.txt
-          curl -fsSL "${domains_download_url}/fakeip-filter-lite.list" | awk '!/^DOMAIN-REGEX,/' | sed -e 's/DOMAIN,/full:/' -e 's/DOMAIN-SUFFIX,//' > ./tmp/fakeip-filter-lite.txt
-          cat <<EOF >> ./tmp/fakeip-filter-lite.txt
-          keyword:ntp
-          keyword:stun
-          keyword:time
-          EOF
+          # 源列表 -> 生成器格式：去 PROCESS-NAME，改写各类型前缀
+          conv() { awk '!/^PROCESS-NAME,/' "$1" | sed -e 's/DOMAIN,/full:/' -e 's/DOMAIN-SUFFIX,//' -e 's/DOMAIN-KEYWORD,/keyword:/' -e 's/DOMAIN-REGEX,/regexp:/' > "$2"; }
+          # fakeip-filter：剥离正则，补 keyword（full 版由调用方再把正则拼回）
+          fakeip() { awk '!/^DOMAIN-REGEX,/' "$1" | sed -e 's/DOMAIN,/full:/' -e 's/DOMAIN-SUFFIX,//' > "$2"; printf 'keyword:ntp\nkeyword:stun\nkeyword:time\n' >> "$2"; }
 
-          # Generate `mihomo` geosite-all.dat
+          mkdir -p ./community/mydata/
           cd ./community/
-          for arch1 in "${archs1[@]}"; do
-            curl -fsSL "${domains_download_url}/${arch1}.list" | awk '!/^PROCESS-NAME,/' | sed -e 's/DOMAIN,/full:/' -e 's/DOMAIN-SUFFIX,//' -e 's/DOMAIN-KEYWORD,/keyword:/' -e 's/DOMAIN-REGEX,/regexp:/' > "./mydata/${arch1}"
+
+          # datprofile：allowlist 任务；找不到 tag 会直接报错（旧写法会静默产出空 tag）
+          python3 - <<'PY'
+          import json, os
+          a1, a2, a3 = (os.environ[n].split() for n in ("ARCH1", "ARCH2", "ARCH3"))
+          fp = ["fakeip-filter"]
+          json.dump([{"name": "geosite-all.dat", "mode": "allowlist", "lists": fp + a1},
+                     {"name": "geosite.dat", "mode": "allowlist", "lists": fp + a2}],
+                    open("profile-main.json", "w"))
+          json.dump([{"name": "geosite-all-lite.dat", "mode": "allowlist", "lists": fp + a1},
+                     {"name": "geosite-lite.dat", "mode": "allowlist", "lists": fp + a2}],
+                    open("profile-lite.json", "w"))
+          json.dump([{"name": "geosite-mini.dat", "mode": "allowlist",
+                      "lists": ["cn" if t == "cn-lite" else t for t in a3]}],
+                    open("profile-mini.json", "w"))
+          PY
+
+          # geosite-all.dat + geosite.dat
+          for t in $(printf '%s\n' "${GEODATA_ARCH1[@]}" "${GEODATA_ARCH2[@]}" | sort -u); do
+            conv "../src/${t}.list" "./mydata/${t}"
           done
-          cp -f ../tmp/fakeip-filter.txt ./mydata/fakeip-filter
-          go run ./ --datapath=./mydata/ --outputname geosite-all.dat
+          fakeip ../src/fakeip-filter.list ./mydata/fakeip-filter
+          awk '/^DOMAIN-REGEX,/ && !/ntp|stun|time/' ../src/fakeip-filter.list | sed 's/DOMAIN-REGEX,/regexp:/' >> ./mydata/fakeip-filter
+          go run ./ --datapath=./mydata/ --datprofile=./profile-main.json
 
-          # Generate `mihomo` geosite-all-lite.dat
-          rm -f ./mydata/ads
-          cp -f ../tmp/fakeip-filter-lite.txt ./mydata/fakeip-filter
-          go run ./ --datapath=./mydata/ --outputname geosite-all-lite.dat
+          # geosite-all-lite.dat + geosite-lite.dat：tag 名不变，只换 fakeip-filter 的内容
+          fakeip ../src/fakeip-filter-lite.list ./mydata/fakeip-filter
+          go run ./ --datapath=./mydata/ --datprofile=./profile-lite.json
 
-          # Generate `mihomo` geosite.dat
+          # geosite-mini.dat：cn-lite 的内容以 cn 这个 tag 输出
           rm -f ./mydata/*
-          for arch2 in "${archs2[@]}"; do
-            curl -fsSL "${domains_download_url}/${arch2}.list" | awk '!/^PROCESS-NAME,/' | sed -e 's/DOMAIN,/full:/' -e 's/DOMAIN-SUFFIX,//' -e 's/DOMAIN-KEYWORD,/keyword:/' -e 's/DOMAIN-REGEX,/regexp:/' > "./mydata/${arch2}"
-          done
-          cp -f ../tmp/fakeip-filter.txt ./mydata/fakeip-filter
-          go run ./ --datapath=./mydata/ --outputname geosite.dat
-
-          # Generate `mihomo` geosite-lite.dat
-          rm -f ./mydata/ads
-          cp -f ../tmp/fakeip-filter-lite.txt ./mydata/fakeip-filter
-          go run ./ --datapath=./mydata/ --outputname geosite-lite.dat
-
-          # Generate `mihomo` geosite-mini.dat
-          rm -f ./mydata/*
-          for arch3 in "${archs3[@]}"; do
-            curl -fsSL "${domains_download_url}/${arch3}.list" | awk '!/^PROCESS-NAME,/' | sed -e 's/DOMAIN,/full:/' -e 's/DOMAIN-SUFFIX,//' -e 's/DOMAIN-KEYWORD,/keyword:/' -e 's/DOMAIN-REGEX,/regexp:/' > "./mydata/${arch3}"
+          for t in "${GEODATA_ARCH3[@]}"; do
+            conv "../src/${t}.list" "./mydata/${t}"
           done
           mv -f ./mydata/cn-lite ./mydata/cn
-          go run ./ --datapath=./mydata/ --outputname geosite-mini.dat
+          go run ./ --datapath=./mydata/ --datprofile=./profile-mini.json
 
       - name: Get geoip relative files
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p ./mihomo-geodata/
-          # Download mihomo geoip files (.mmdb)
-          mihomo_mmdb=($(curl -fsSL https://api.github.com/repos/DustinWin/geoip/releases | awk '/"browser_download_url"/' | awk '/.mmdb/' | awk -F '"' '{print $4}'))
-          count_mihomo_mmdb=${#mihomo_mmdb[@]}
-          for ((i = 0; i < count_mihomo_mmdb; i++)); do
-            wget -q -P ./mihomo-geodata/ "${mihomo_mmdb[i]}"
-          done
+          # 直接取 tags/mihomo-geodata 这一个 release，比扫 releases 列表更稳（不受分页影响），
+          # 也只调一次 API；带 token 避免匿名 60/h 限流
+          release=$(curl -fsSL --retry 3 --retry-delay 5 -H "Authorization: Bearer ${GH_TOKEN}" \
+            "https://api.github.com/repos/panyichen48737/geoip/releases/tags/mihomo-geodata")
+          urls=$(printf '%s' "${release}" | awk -F '"' '/"browser_download_url"/{print $4}')
 
-          # Download `mihomo` other geoip files (except .mmdb)
-          mihomo_others=($(curl -fsSL https://api.github.com/repos/DustinWin/geoip/releases | awk '/"browser_download_url"/' | awk '/\/mihomo-geodata\//' | awk '!/\.mmdb/' | awk -F '"' '{print $4}'))
-          count_mihomo_others=${#mihomo_others[@]}
-          for ((i = 0; i < count_mihomo_others; i++)); do
-            wget -q -P ./community/ "${mihomo_others[i]}"
+          mapfile -t mihomo_mmdb < <(printf '%s\n' "${urls}" | grep '\.mmdb$')
+          mapfile -t mihomo_others < <(printf '%s\n' "${urls}" | grep -v '\.mmdb$')
+
+          [ ${#mihomo_mmdb[@]} -gt 0 ] || { echo "::error::geoip release 里没有 .mmdb"; exit 1; }
+          [ ${#mihomo_others[@]} -gt 0 ] || { echo "::error::geoip release 里没有 .dat/.metadb"; exit 1; }
+
+          for url in "${mihomo_mmdb[@]}"; do
+            wget -q --tries=3 --retry-connrefused -P ./mihomo-geodata/ "${url}"
+          done
+          for url in "${mihomo_others[@]}"; do
+            wget -q --tries=3 --retry-connrefused -P ./community/ "${url}"
           done
 
       - name: Move `mihomo` geodata files
         run: |
           cd ./community/ || exit 1
-          for file in $(ls *.dat *.metadb); do
+          for file in *.dat *.metadb; do
             install -Dp "./${file}" ../mihomo-geodata/
           done
-          rm -rf ../custom* ../community*
+          cd .. && rm -rf ./community
 
-      - name: Download `mihomo` rule-set files
+      - name: Prepare `mihomo` rule-set files
+        shell: bash
         run: |
+          source ./config/tags.sh
           mkdir -p ./mihomo-ruleset/
-          domains=(fakeip-filter fakeip-filter-lite private trackerslist microsoft-cn apple-cn apple-proxy google-cn games-cn games netflix disney hbo primevideo appletv youtube tiktok bilibili spotify bing onedrive ai networktest tld-proxy tld-cn proxy cn cn-lite)
-          ips=(netflixip gamesip privateip cnip telegramip)
 
-          for domain in "${domains[@]}"; do
+          for domain in "${RULESET_DOMAINS[@]}"; do
             mkdir -p "./tools/domains/${domain}/"
-            curl -fsSL "${domains_download_url}/${domain}.list" | awk '/(DOMAIN,|DOMAIN-SUFFIX,)/' | sed -e 's/DOMAIN,//' -e 's/DOMAIN-SUFFIX,/\+\./' >> "./tools/domains/${domain}/${domain}.list"
+            # 只保留 DOMAIN / DOMAIN-SUFFIX：mihomo 的 behavior:domain 规则集（mrs/text）
+            # 只能表达裸域名 / .suffix / 通配符，装不下 DOMAIN-KEYWORD 和 DOMAIN-REGEX。
+            # 这两个类型在 geodata 和 sing-box 产物里是保留的，差异见 README。
+            awk '/(DOMAIN,|DOMAIN-SUFFIX,)/' "./src/${domain}.list" | sed -e 's/DOMAIN,//' -e 's/DOMAIN-SUFFIX,/\+\./' >> "./tools/domains/${domain}/${domain}.list"
           done
 
-          for ip in "${ips[@]}"; do
+          for ip in "${RULESET_IPS[@]}"; do
             mkdir -p "./tools/ips/${ip}/"
-            curl -fsSL "${ips_download_url}/${ip}.list" | sed 's/.*,//' >> "./tools/ips/${ip}/${ip}.list"
+            sed 's/.*,//' "./src/${ip}.list" >> "./tools/ips/${ip}/${ip}.list"
           done
 
-      - name: Download `sing-box` rule_set files
+      - name: Prepare `sing-box` rule_set files
+        shell: bash
         run: |
-          domains=(fakeip-filter fakeip-filter-lite private trackerslist microsoft-cn apple-cn apple-proxy google-cn games-cn games netflix disney hbo primevideo appletv youtube tiktok bilibili spotify bing onedrive ai networktest tld-proxy tld-cn proxy cn cn-lite)
-          ips=(netflixip gamesip privateip cnip telegramip)
+          source ./config/tags.sh
 
-          for domain in "${domains[@]}"; do
-            mkdir -p "./tools/rules/${domain}/"
-            curl -fsSL "${domains_download_url}/${domain}.list" > "./tools/rules/${domain}/${domain}.list"
-          done
-
-          for ip in "${ips[@]}"; do
-            mkdir -p "./tools/rules/${ip}/"
-            curl -fsSL "${ips_download_url}/${ip}.list" > "./tools/rules/${ip}/${ip}.list"
+          # sing-box 侧走原始 .list，DOMAIN-KEYWORD / DOMAIN-REGEX / PROCESS-NAME 全保留
+          for tag in "${RULESET_DOMAINS[@]}" "${RULESET_IPS[@]}"; do
+            mkdir -p "./tools/rules/${tag}/"
+            cp -f "./src/${tag}.list" "./tools/rules/${tag}/${tag}.list"
           done
 
       - name: Generate `mihomo` rule-set (mrs) and move .list files
         run: |
-          curl -fsS -o ./tools/mihomo -L https://github.com/DustinWin/proxy-tools/releases/download/mihomo/mihomo-meta-linux-amd64-v3.upx
+          curl -fsS --retry 3 --retry-delay 5 -o ./tools/mihomo -L https://github.com/DustinWin/proxy-tools/releases/download/mihomo/mihomo-meta-linux-amd64-v3.upx
           chmod +x ./tools/mihomo
 
           cd ./tools/
@@ -186,67 +231,77 @@ jobs:
           rm -rf ./mihomo* ./domains/ ./ips/
 
       - name: Generate `sing-box` rule_set (srs) and move .json files
+        shell: bash
         run: |
-          if [[ "${{ env.singbox_core_latest_version }}" == "${{ env.singbox_core_release_version }}" ]]; then
-            # Setting `sing-box` core&ruleset environment variables
-            echo "singbox_core_old_version=${{ env.singbox_core_compatible_version }}" >> "${GITHUB_ENV}"
-            echo "singbox_core_new_version=${{ env.singbox_core_latest_version }}" >> "${GITHUB_ENV}"
-            echo "singbox_ruleset_old_version=${{ env.singbox_rules_compatible_version }}" >> "${GITHUB_ENV}"
-            echo "singbox_ruleset_new_version=${{ env.singbox_rules_latest_version }}" >> "${GITHUB_ENV}"
+          echo "singbox_core_old_version=${singbox_core_compatible_version}" >> "${GITHUB_ENV}"
+          echo "singbox_core_new_version=${singbox_core_latest_version}" >> "${GITHUB_ENV}"
+          echo "singbox_ruleset_old_version=${singbox_rules_compatible_version}" >> "${GITHUB_ENV}"
+          echo "singbox_ruleset_new_version=${singbox_rules_latest_version}" >> "${GITHUB_ENV}"
+
+          if [[ "${singbox_core_latest_version}" == "${singbox_core_release_version}" ]]; then
             echo "singbox_equal=true" >> "${GITHUB_ENV}"
-
-            # Generate `sing-box` rule_set (compatible)
-            curl -fsS -L "https://github.com/SagerNet/sing-box/releases/download/v${{ env.singbox_core_compatible_version }}/sing-box-${{ env.singbox_core_compatible_version }}-linux-amd64.tar.gz" | tar -zx -C ./tools/
-            mv -f "./tools/sing-box-${{ env.singbox_core_compatible_version }}-linux-amd64/sing-box" ./tools/sing-box
-            mkdir -p ./sing-box-ruleset-compatible/
-            cd ./tools/
-            sed -i 's/"version": 1/"version": ${{ env.singbox_rules_compatible_version }}/' ./convert.sh
-            chmod +x ./convert.sh && ./convert.sh
-            mv -f ./*.json ./*.srs ../sing-box-ruleset-compatible/
-            rm -rf ./sing-box*
-
-            # Generate `sing-box` rule_set
-            cd ../
-            curl -fsS -o ./tools/sing-box -L https://github.com/DustinWin/proxy-tools/releases/download/sing-box/sing-box-ref1nd-stable-linux-amd64-v3.upx
-            chmod +x ./tools/sing-box
-            mkdir -p ./sing-box-ruleset/
-            cd ./tools/
-            sed -i 's/"version": ${{ env.singbox_rules_compatible_version }}/"version": ${{ env.singbox_rules_latest_version }}/' ./convert.sh
-            chmod +x ./convert.sh && ./convert.sh
-            mv -f ./*.json ./*.srs ../sing-box-ruleset/
-            rm -rf ./sing-box* ./rules*
+            compatible_bin="https://github.com/SagerNet/sing-box/releases/download/v${singbox_core_compatible_version}/sing-box-${singbox_core_compatible_version}-linux-amd64.tar.gz"
+            latest_bin="https://github.com/DustinWin/proxy-tools/releases/download/sing-box/sing-box-ref1nd-stable-linux-amd64-v3.upx"
+            compatible_is_tarball=true
           else
-            # Setting `sing-box` core&ruleset environment variables
-            echo "singbox_core_old_version=${{ env.singbox_core_compatible_version }}" >> "${GITHUB_ENV}"
-            echo "singbox_core_new_version=${{ env.singbox_core_latest_version }}" >> "${GITHUB_ENV}"
-            echo "singbox_ruleset_old_version=${{ env.singbox_rules_compatible_version }}" >> "${GITHUB_ENV}"
-            echo "singbox_ruleset_new_version=${{ env.singbox_rules_latest_version }}" >> "${GITHUB_ENV}"
             echo "singbox_equal=false" >> "${GITHUB_ENV}"
-
-            # Generate `sing-box` rule_set (compatible)
-            curl -fsS -o ./tools/sing-box -L https://github.com/DustinWin/proxy-tools/releases/download/sing-box/sing-box-ref1nd-stable-linux-amd64-v3.upx
-            chmod +x ./tools/sing-box
-            mkdir -p ./sing-box-ruleset-compatible/
-            cd ./tools/
-            sed -i 's/"version": 1/"version": ${{ env.singbox_rules_compatible_version }}/' ./convert.sh
-            chmod +x ./convert.sh && ./convert.sh
-            mv -f ./*.json ./*.srs ../sing-box-ruleset-compatible/
-            rm -rf ./sing-box*
-
-            # Generate `sing-box` rule_set
-            cd ../
-            curl -fsS -o ./tools/sing-box -L https://github.com/DustinWin/proxy-tools/releases/download/sing-box/sing-box-ref1nd-testing-linux-amd64-v3.upx
-            chmod +x ./tools/sing-box
-            mkdir -p ./sing-box-ruleset/
-            cd ./tools/
-            sed -i 's/"version": ${{ env.singbox_rules_compatible_version }}/"version": ${{ env.singbox_rules_latest_version }}/' ./convert.sh
-            chmod +x ./convert.sh && ./convert.sh
-            mv -f ./*.json ./*.srs ../sing-box-ruleset/
-            rm -rf ./sing-box* ./rules*
+            compatible_bin="https://github.com/DustinWin/proxy-tools/releases/download/sing-box/sing-box-ref1nd-stable-linux-amd64-v3.upx"
+            latest_bin="https://github.com/DustinWin/proxy-tools/releases/download/sing-box/sing-box-ref1nd-testing-linux-amd64-v3.upx"
+            compatible_is_tarball=false
           fi
 
+          # Generate `sing-box` rule_set (compatible)
+          mkdir -p ./sing-box-ruleset-compatible/
+          if [ "${compatible_is_tarball}" = "true" ]; then
+            curl -fsS --retry 3 --retry-delay 5 -L "${compatible_bin}" | tar -zx -C ./tools/
+            mv -f "./tools/sing-box-${singbox_core_compatible_version}-linux-amd64/sing-box" ./tools/sing-box
+          else
+            curl -fsS --retry 3 --retry-delay 5 -o ./tools/sing-box -L "${compatible_bin}"
+          fi
+          chmod +x ./tools/sing-box
+          # convert.sh 读 ./rules/、把产物写在 CWD，用子 shell 保持外层 cwd 在仓库根
+          ( cd ./tools/ && ./convert.sh "${singbox_rules_compatible_version}" )
+          mv -f ./tools/*.json ./tools/*.srs ./sing-box-ruleset-compatible/
+          rm -f ./tools/sing-box*
+
+          # Generate `sing-box` rule_set
+          mkdir -p ./sing-box-ruleset/
+          curl -fsS --retry 3 --retry-delay 5 -o ./tools/sing-box -L "${latest_bin}"
+          chmod +x ./tools/sing-box
+          ( cd ./tools/ && ./convert.sh "${singbox_rules_latest_version}" )
+          mv -f ./tools/*.json ./tools/*.srs ./sing-box-ruleset/
+          rm -rf ./tools/sing-box* ./tools/rules
+
+      - name: Assert artifacts
+        shell: bash
+        run: |
+          source ./config/tags.sh
+
+          for f in geosite-all.dat geosite-all-lite.dat geosite.dat geosite-lite.dat geosite-mini.dat geoip.dat geoip.metadb Country.mmdb; do
+            [ -s "./mihomo-geodata/${f}" ] || { echo "::error::./mihomo-geodata/${f} 缺失或为空"; exit 1; }
+          done
+
+          expected=$(( (${#RULESET_DOMAINS[@]} + ${#RULESET_IPS[@]}) * 2 ))
+          for dir in ./mihomo-ruleset ./sing-box-ruleset ./sing-box-ruleset-compatible; do
+            actual=$(find "${dir}" -maxdepth 1 -type f | wc -l)
+            [ "${actual}" -eq "${expected}" ] || { echo "::error::${dir} 期望 ${expected} 个文件，实际 ${actual}"; exit 1; }
+            if find "${dir}" -maxdepth 1 -type f -empty | grep -q .; then
+              echo "::error::${dir} 存在空文件"; exit 1
+            fi
+          done
+          echo "产物校验通过"
+
+      - name: Push `mihomo-geodata` branch
+        id: push_geodata
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          source ./.github/scripts/push-branch.sh
+          push_branch mihomo-geodata ./mihomo-geodata "mihomo 内核 geodata 文件更新于 ${update_version}"
+
       - name: Release and upload `mihomo-geodata` assets
-        uses: svenstaro/upload-release-action@v2
+        if: steps.push_geodata.outputs.changed == 'true'
+        uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           release_name: mihomo-geodata
@@ -258,19 +313,28 @@ jobs:
           file_glob: true
           file: ./mihomo-geodata/*
 
-      - name: Commit and push `mihomo-geodata` branch
+      - name: Purge jsDelivr CDN (mihomo-geodata)
+        if: steps.push_geodata.outputs.changed == 'true'
         run: |
           cd ./mihomo-geodata/ || exit 1
-          git init
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git checkout -b mihomo-geodata
-          git add . && git commit -m "mihomo 内核 geodata 文件更新于 ${update_version}"
-          git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
-          git push -f origin mihomo-geodata
+          for file in *; do
+            resp=$(curl -fsS --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@mihomo-geodata/${file}" || true)
+            status=$(printf '%s' "${resp}" | jq -r '.status // empty' 2>/dev/null || true)
+            # 只看顶层 status：响应里的 throttled 是 per-path「最近已作废过」，不代表这次失败
+            [ -n "${status}" ] || echo "::warning::mihomo-geodata/${file} purge 未拿到有效响应: ${resp}"
+          done
+
+      - name: Push `mihomo-ruleset` branch
+        id: push_ruleset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          source ./.github/scripts/push-branch.sh
+          push_branch mihomo-ruleset ./mihomo-ruleset "mihomo 内核 rule-set 规则集文件更新于 ${update_version}"
 
       - name: Release and upload `mihomo-ruleset` assets
-        uses: svenstaro/upload-release-action@v2
+        if: steps.push_ruleset.outputs.changed == 'true'
+        uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           release_name: mihomo-ruleset
@@ -282,19 +346,28 @@ jobs:
           file_glob: true
           file: ./mihomo-ruleset/*
 
-      - name: Commit and push `mihomo-ruleset` branch
+      - name: Purge jsDelivr CDN (mihomo-ruleset)
+        if: steps.push_ruleset.outputs.changed == 'true'
         run: |
           cd ./mihomo-ruleset/ || exit 1
-          git init
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git checkout -b mihomo-ruleset
-          git add . && git commit -m "mihomo 内核 rule-set 规则集文件更新于 ${update_version}"
-          git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
-          git push -f origin mihomo-ruleset
+          for file in *; do
+            resp=$(curl -fsS --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@mihomo-ruleset/${file}" || true)
+            status=$(printf '%s' "${resp}" | jq -r '.status // empty' 2>/dev/null || true)
+            # 只看顶层 status：响应里的 throttled 是 per-path「最近已作废过」，不代表这次失败
+            [ -n "${status}" ] || echo "::warning::mihomo-ruleset/${file} purge 未拿到有效响应: ${resp}"
+          done
+
+      - name: Push `sing-box-ruleset-compatible` branch
+        id: push_sb_compatible
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          source ./.github/scripts/push-branch.sh
+          push_branch sing-box-ruleset-compatible ./sing-box-ruleset-compatible "sing-box 内核 rule_set 规则集文件更新于 ${update_version}"
 
       - name: Release and upload `sing-box-ruleset-compatible` assets
-        uses: svenstaro/upload-release-action@v2
+        if: steps.push_sb_compatible.outputs.changed == 'true'
+        uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           release_name: sing-box-ruleset-compatible
@@ -307,20 +380,28 @@ jobs:
           file_glob: true
           file: ./sing-box-ruleset-compatible/*
 
-      - name: Commit and push `sing-box-ruleset-compatible` branch
+      - name: Purge jsDelivr CDN (sing-box-ruleset-compatible)
+        if: steps.push_sb_compatible.outputs.changed == 'true'
         run: |
           cd ./sing-box-ruleset-compatible/ || exit 1
-          git init
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git checkout -b sing-box-ruleset-compatible
-          git add . && git commit -m "sing-box 内核 rule_set 规则集文件更新于 ${update_version}"
-          git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
-          git push -f origin sing-box-ruleset-compatible
+          for file in *; do
+            resp=$(curl -fsS --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@sing-box-ruleset-compatible/${file}" || true)
+            status=$(printf '%s' "${resp}" | jq -r '.status // empty' 2>/dev/null || true)
+            # 只看顶层 status：响应里的 throttled 是 per-path「最近已作废过」，不代表这次失败
+            [ -n "${status}" ] || echo "::warning::sing-box-ruleset-compatible/${file} purge 未拿到有效响应: ${resp}"
+          done
+
+      - name: Push `sing-box-ruleset` branch
+        id: push_sb_latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          source ./.github/scripts/push-branch.sh
+          push_branch sing-box-ruleset ./sing-box-ruleset "sing-box 内核 rule_set 规则集文件更新于 ${update_version}"
 
       - name: Release and upload `sing-box-ruleset` assets (singbox_equal == true)
-        if: ${{ env.singbox_equal == 'true' }}
-        uses: svenstaro/upload-release-action@v2
+        if: steps.push_sb_latest.outputs.changed == 'true' && env.singbox_equal == 'true'
+        uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           release_name: sing-box-ruleset
@@ -334,8 +415,8 @@ jobs:
           file: ./sing-box-ruleset/*
 
       - name: Release and upload `sing-box-ruleset` assets (singbox_equal == false)
-        if: ${{ env.singbox_equal == 'false' }}
-        uses: svenstaro/upload-release-action@v2
+        if: steps.push_sb_latest.outputs.changed == 'true' && env.singbox_equal == 'false'
+        uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           release_name: sing-box-ruleset
@@ -348,38 +429,38 @@ jobs:
           file_glob: true
           file: ./sing-box-ruleset/*
 
-      - name: Commit and push `sing-box-ruleset` branch
+      - name: Purge jsDelivr CDN (sing-box-ruleset)
+        if: steps.push_sb_latest.outputs.changed == 'true'
         run: |
           cd ./sing-box-ruleset/ || exit 1
-          git init
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git checkout -b sing-box-ruleset
-          git add . && git commit -m "sing-box 内核 rule_set 规则集文件更新于 ${update_version}"
-          git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
-          git push -f origin sing-box-ruleset
+          for file in *; do
+            resp=$(curl -fsS --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@sing-box-ruleset/${file}" || true)
+            status=$(printf '%s' "${resp}" | jq -r '.status // empty' 2>/dev/null || true)
+            # 只看顶层 status：响应里的 throttled 是 per-path「最近已作废过」，不代表这次失败
+            [ -n "${status}" ] || echo "::warning::sing-box-ruleset/${file} purge 未拿到有效响应: ${resp}"
+          done
 
-      - name: Purge jsDelivr CDN
+      # 只在上一步都成功时运行：此时本地文件集是完整的，删掉的必然是真残留。
+      - name: Prune stale release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd ./mihomo-geodata/ || exit 1
-          for file in $(ls); do
-            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@mihomo-geodata/${file}"
-          done
-          cd ../mihomo-ruleset/ || exit 1
-          for file in $(ls); do
-            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@mihomo-ruleset/${file}"
-          done
-          cd ../sing-box-ruleset-compatible/ || exit 1
-          for file in $(ls); do
-            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@sing-box-ruleset-compatible/${file}"
-          done
-          cd ../sing-box-ruleset/ || exit 1
-          for file in $(ls); do
-            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@sing-box-ruleset/${file}"
-          done
+          source ./.github/scripts/prune-release.sh
+          prune_release mihomo-geodata ./mihomo-geodata
+          prune_release mihomo-ruleset ./mihomo-ruleset
+          prune_release sing-box-ruleset-compatible ./sing-box-ruleset-compatible
+          prune_release sing-box-ruleset ./sing-box-ruleset
 
+  # 单独一个 job：删除运行记录只需要 actions:write，不该让整个 build job 都带着这个权限
+  cleanup:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
       - name: Delete old workflow runs
-        uses: Mattraks/delete-workflow-runs@v2
+        uses: Mattraks/delete-workflow-runs@0cf693bc9909e5e867ee8f27b813224ba862939c # v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}

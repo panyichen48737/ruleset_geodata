@@ -21,7 +21,7 @@ jobs:
 
       - name: Sync upstream changes
         id: sync
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
+        uses: aormsby/Fork-Sync-With-Upstream-action@83d78e8c4bf524e79b091cf257deba4dee9e60df # v3.4.3
         with:
           upstream_sync_repo: DustinWin/ruleset_geodata
           upstream_sync_branch: main
