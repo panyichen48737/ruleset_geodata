@@ -88,7 +88,8 @@ PY
 
   ./sing-box rule-set compile --output "${tag}.srs" "${tag}.json"
 
-  rm -rf "${dir}"
+  # 不删 ./rules/<tag>/：run.yml 会用两个内核（兼容 / 最新）把同一份源各跑一遍，
+  # 删了第二遍就找不到 tag。收尾由 run.yml 的 `rm -rf ./tools/rules` 负责。
   count=$((count + 1))
 done
 
