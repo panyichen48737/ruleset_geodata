@@ -4,9 +4,10 @@ permissions:
   contents: write
 
 on:
-  schedule:
-    - cron: "0 8 * * *"
-      timezone: "Asia/Shanghai"
+  # 本仓库的 run.yml / README 相对上游深度定制（archs1/2/3、domains、ips 等分类清单），
+  # 自动 merge 会把上游对这两处的改动直接带进来——其中无冲突标记的那些不会报错、
+  # 只会静默覆盖（见 4e40f2b：push.branches 就这样被上游改成了 main）。
+  # 因此取消定时同步，改为需要时手动触发，合并前先 review。
   workflow_dispatch:
 
 jobs:
