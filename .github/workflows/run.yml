@@ -53,6 +53,7 @@ jobs:
           cache-dependency-path: ./custom/go.sum
 
       - name: Generate `mihomo` geodata
+        shell: bash
         run: |
           mkdir -p ./tmp/ ./community/mydata/
           archs1=(private trackerslist microsoft-cn apple-cn apple-proxy google-cn games-cn games ai networktest netflix disney hbo primevideo appletv youtube tiktok bilibili spotify tld-proxy tld-cn proxy cn)
@@ -77,7 +78,7 @@ jobs:
           # Generate `mihomo` geosite-all.dat
           cd ./community/
           for arch1 in "${archs1[@]}"; do
-            curl -fsSL "${domains_download_url}/${arch1}.list" | sed -e 's/DOMAIN,/full:/' -e 's/DOMAIN-SUFFIX,//' -e 's/DOMAIN-KEYWORD,/keyword:/' -e 's/DOMAIN-REGEX,/regexp:/' > "./mydata/${arch1}"
+            curl -fsSL "${domains_download_url}/${arch1}.list" | awk '!/^PROCESS-NAME,/' | sed -e 's/DOMAIN,/full:/' -e 's/DOMAIN-SUFFIX,//' -e 's/DOMAIN-KEYWORD,/keyword:/' -e 's/DOMAIN-REGEX,/regexp:/' > "./mydata/${arch1}"
           done
           cp -f ../tmp/fakeip-filter.txt ./mydata/fakeip-filter
           go run ./ --datapath=./mydata/ --outputname geosite-all.dat
@@ -90,7 +91,7 @@ jobs:
           # Generate `mihomo` geosite.dat
           rm -f ./mydata/*
           for arch2 in "${archs2[@]}"; do
-            curl -fsSL "${domains_download_url}/${arch2}.list" | sed -e 's/DOMAIN,/full:/' -e 's/DOMAIN-SUFFIX,//' -e 's/DOMAIN-KEYWORD,/keyword:/' -e 's/DOMAIN-REGEX,/regexp:/' > "./mydata/${arch2}"
+            curl -fsSL "${domains_download_url}/${arch2}.list" | awk '!/^PROCESS-NAME,/' | sed -e 's/DOMAIN,/full:/' -e 's/DOMAIN-SUFFIX,//' -e 's/DOMAIN-KEYWORD,/keyword:/' -e 's/DOMAIN-REGEX,/regexp:/' > "./mydata/${arch2}"
           done
           cp -f ../tmp/fakeip-filter.txt ./mydata/fakeip-filter
           go run ./ --datapath=./mydata/ --outputname geosite.dat
@@ -103,7 +104,7 @@ jobs:
           # Generate `mihomo` geosite-mini.dat
           rm -f ./mydata/*
           for arch3 in "${archs3[@]}"; do
-            curl -fsSL "${domains_download_url}/${arch3}.list" | sed -e 's/DOMAIN,/full:/' -e 's/DOMAIN-SUFFIX,//' -e 's/DOMAIN-KEYWORD,/keyword:/' -e 's/DOMAIN-REGEX,/regexp:/' > "./mydata/${arch3}"
+            curl -fsSL "${domains_download_url}/${arch3}.list" | awk '!/^PROCESS-NAME,/' | sed -e 's/DOMAIN,/full:/' -e 's/DOMAIN-SUFFIX,//' -e 's/DOMAIN-KEYWORD,/keyword:/' -e 's/DOMAIN-REGEX,/regexp:/' > "./mydata/${arch3}"
           done
           mv -f ./mydata/cn-lite ./mydata/cn
           go run ./ --datapath=./mydata/ --outputname geosite-mini.dat
