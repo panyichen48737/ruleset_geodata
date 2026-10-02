@@ -250,6 +250,10 @@ jobs:
             compatible_is_tarball=false
           fi
 
+          # convert.sh 是本仓库的脚本，Windows 上编辑容易丢掉可执行位（现在 git 里就是
+          # 100644），显式补一次，别依赖 checkout 出来的权限位。
+          chmod +x ./tools/convert.sh
+
           # Generate `sing-box` rule_set (compatible)
           mkdir -p ./sing-box-ruleset-compatible/
           if [ "${compatible_is_tarball}" = "true" ]; then
