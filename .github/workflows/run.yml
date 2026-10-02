@@ -266,7 +266,9 @@ jobs:
           # convert.sh 读 ./rules/、把产物写在 CWD，用子 shell 保持外层 cwd 在仓库根
           ( cd ./tools/ && ./convert.sh "${singbox_rules_compatible_version}" )
           mv -f ./tools/*.json ./tools/*.srs ./sing-box-ruleset-compatible/
-          rm -f ./tools/sing-box*
+          # tarball 路径会解出 sing-box-<ver>-linux-amd64/ 目录，`rm -f` 删不掉目录
+          # （报 "Is a directory" 并让整步失败），必须用 -r
+          rm -rf ./tools/sing-box*
 
           # Generate `sing-box` rule_set
           mkdir -p ./sing-box-ruleset/
