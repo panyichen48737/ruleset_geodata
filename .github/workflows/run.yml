@@ -37,10 +37,10 @@ jobs:
         run: |
           # 同一份源文档只拉一次，后面 4 个变量都从本地文件解析
           doc="${RUNNER_TEMP}/singbox-source-format.md"
-          curl -fsSL --retry 3 --retry-delay 5 -o "${doc}" \
+          curl -fsSL --max-time 60 --retry 3 --retry-delay 5 -o "${doc}" \
             https://raw.githubusercontent.com/reF1nd/sing-box/reF1nd-testing/docs/configuration/rule-set/source-format.md
 
-          core_release=$(curl -fsSL --retry 3 --retry-delay 5 "https://api.github.com/repos/reF1nd/sing-box/tags?per_page=100" \
+          core_release=$(curl -fsSL --max-time 60 --retry 3 --retry-delay 5 "https://api.github.com/repos/reF1nd/sing-box/tags?per_page=100" \
             | jq -r '.[].name' | grep -P '^v?[0-9]+\.[0-9]+\.[0-9]+-reF1nd.*' | head -n 1 | awk -F'[v.-]' '{print $2"."$3".0"}')
           core_latest=$(awk '/\*/ {last=$0} END {print last}' "${doc}" | sed -n 's/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')
           core_compatible=$(awk '/\*/{lines[++count]=$0} END{print lines[count-1]}' "${doc}" | sed -n 's/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')
@@ -87,10 +87,10 @@ jobs:
           # 每个列表只下一次，geodata / mihomo / sing-box 三条链路都从 ./src 派生
           # （旧写法三条链路各下各的，同一样文件最多被请求 4 次）
           for domain in "${RULESET_DOMAINS[@]}"; do
-            curl -fsSL --retry 3 --retry-delay 5 -o "./src/${domain}.list" "${domains_download_url}/${domain}.list"
+            curl -fsSL --max-time 300 --retry 3 --retry-delay 5 -o "./src/${domain}.list" "${domains_download_url}/${domain}.list"
           done
           for ip in "${RULESET_IPS[@]}"; do
-            curl -fsSL --retry 3 --retry-delay 5 -o "./src/${ip}.list" "${ips_download_url}/${ip}.list"
+            curl -fsSL --max-time 300 --retry 3 --retry-delay 5 -o "./src/${ip}.list" "${ips_download_url}/${ip}.list"
           done
           if find ./src -type f -empty | grep -q .; then
             echo "::error::./src 下存在空文件"; find ./src -type f -empty; exit 1
@@ -155,7 +155,7 @@ jobs:
           mkdir -p ./mihomo-geodata/
           # 直接取 tags/mihomo-geodata 这一个 release，比扫 releases 列表更稳（不受分页影响），
           # 也只调一次 API；带 token 避免匿名 60/h 限流
-          release=$(curl -fsSL --retry 3 --retry-delay 5 -H "Authorization: Bearer ${GH_TOKEN}" \
+          release=$(curl -fsSL --max-time 60 --retry 3 --retry-delay 5 -H "Authorization: Bearer ${GH_TOKEN}" \
             "https://api.github.com/repos/panyichen48737/geoip/releases/tags/mihomo-geodata")
           urls=$(printf '%s' "${release}" | awk -F '"' '/"browser_download_url"/{print $4}')
 
@@ -166,10 +166,10 @@ jobs:
           [ ${#mihomo_others[@]} -gt 0 ] || { echo "::error::geoip release 里没有 .dat/.metadb"; exit 1; }
 
           for url in "${mihomo_mmdb[@]}"; do
-            wget -q --tries=3 --retry-connrefused -P ./mihomo-geodata/ "${url}"
+            wget -q --timeout=120 --tries=3 --retry-connrefused -P ./mihomo-geodata/ "${url}"
           done
           for url in "${mihomo_others[@]}"; do
-            wget -q --tries=3 --retry-connrefused -P ./community/ "${url}"
+            wget -q --timeout=120 --tries=3 --retry-connrefused -P ./community/ "${url}"
           done
 
       - name: Move `mihomo` geodata files
@@ -212,7 +212,7 @@ jobs:
 
       - name: Generate `mihomo` rule-set (mrs) and move .list files
         run: |
-          curl -fsS --retry 3 --retry-delay 5 -o ./tools/mihomo -L https://github.com/DustinWin/proxy-tools/releases/download/mihomo/mihomo-meta-linux-amd64-v3.upx
+          curl -fsS --max-time 900 --retry 3 --retry-delay 5 -o ./tools/mihomo -L https://github.com/DustinWin/proxy-tools/releases/download/mihomo/mihomo-meta-linux-amd64-v3.upx
           chmod +x ./tools/mihomo
 
           cd ./tools/
@@ -257,10 +257,10 @@ jobs:
           # Generate `sing-box` rule_set (compatible)
           mkdir -p ./sing-box-ruleset-compatible/
           if [ "${compatible_is_tarball}" = "true" ]; then
-            curl -fsS --retry 3 --retry-delay 5 -L "${compatible_bin}" | tar -zx -C ./tools/
+            curl -fsS --max-time 900 --retry 3 --retry-delay 5 -L "${compatible_bin}" | tar -zx -C ./tools/
             mv -f "./tools/sing-box-${singbox_core_compatible_version}-linux-amd64/sing-box" ./tools/sing-box
           else
-            curl -fsS --retry 3 --retry-delay 5 -o ./tools/sing-box -L "${compatible_bin}"
+            curl -fsS --max-time 900 --retry 3 --retry-delay 5 -o ./tools/sing-box -L "${compatible_bin}"
           fi
           chmod +x ./tools/sing-box
           # convert.sh 读 ./rules/、把产物写在 CWD，用子 shell 保持外层 cwd 在仓库根
@@ -272,7 +272,7 @@ jobs:
 
           # Generate `sing-box` rule_set
           mkdir -p ./sing-box-ruleset/
-          curl -fsS --retry 3 --retry-delay 5 -o ./tools/sing-box -L "${latest_bin}"
+          curl -fsS --max-time 900 --retry 3 --retry-delay 5 -o ./tools/sing-box -L "${latest_bin}"
           chmod +x ./tools/sing-box
           ( cd ./tools/ && ./convert.sh "${singbox_rules_latest_version}" )
           mv -f ./tools/*.json ./tools/*.srs ./sing-box-ruleset/
@@ -286,6 +286,9 @@ jobs:
           for f in geosite-all.dat geosite-all-lite.dat geosite.dat geosite-lite.dat geosite-mini.dat geoip.dat geoip.metadb Country.mmdb; do
             [ -s "./mihomo-geodata/${f}" ] || { echo "::error::./mihomo-geodata/${f} 缺失或为空"; exit 1; }
           done
+
+          # 上面只查得到"文件非空"，查不出 tag 静默丢失 / 名字写错，这里补上
+          python3 tools/check_dat.py ./mihomo-geodata
 
           expected=$(( (${#RULESET_DOMAINS[@]} + ${#RULESET_IPS[@]}) * 2 ))
           for dir in ./mihomo-ruleset ./sing-box-ruleset ./sing-box-ruleset-compatible; do
@@ -324,7 +327,7 @@ jobs:
         run: |
           cd ./mihomo-geodata/ || exit 1
           for file in *; do
-            resp=$(curl -fsS --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@mihomo-geodata/${file}" || true)
+            resp=$(curl -fsS --max-time 30 --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@mihomo-geodata/${file}" || true)
             status=$(printf '%s' "${resp}" | jq -r '.status // empty' 2>/dev/null || true)
             # 只看顶层 status：响应里的 throttled 是 per-path「最近已作废过」，不代表这次失败
             [ -n "${status}" ] || echo "::warning::mihomo-geodata/${file} purge 未拿到有效响应: ${resp}"
@@ -357,7 +360,7 @@ jobs:
         run: |
           cd ./mihomo-ruleset/ || exit 1
           for file in *; do
-            resp=$(curl -fsS --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@mihomo-ruleset/${file}" || true)
+            resp=$(curl -fsS --max-time 30 --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@mihomo-ruleset/${file}" || true)
             status=$(printf '%s' "${resp}" | jq -r '.status // empty' 2>/dev/null || true)
             # 只看顶层 status：响应里的 throttled 是 per-path「最近已作废过」，不代表这次失败
             [ -n "${status}" ] || echo "::warning::mihomo-ruleset/${file} purge 未拿到有效响应: ${resp}"
@@ -391,7 +394,7 @@ jobs:
         run: |
           cd ./sing-box-ruleset-compatible/ || exit 1
           for file in *; do
-            resp=$(curl -fsS --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@sing-box-ruleset-compatible/${file}" || true)
+            resp=$(curl -fsS --max-time 30 --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@sing-box-ruleset-compatible/${file}" || true)
             status=$(printf '%s' "${resp}" | jq -r '.status // empty' 2>/dev/null || true)
             # 只看顶层 status：响应里的 throttled 是 per-path「最近已作废过」，不代表这次失败
             [ -n "${status}" ] || echo "::warning::sing-box-ruleset-compatible/${file} purge 未拿到有效响应: ${resp}"
@@ -440,7 +443,7 @@ jobs:
         run: |
           cd ./sing-box-ruleset/ || exit 1
           for file in *; do
-            resp=$(curl -fsS --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@sing-box-ruleset/${file}" || true)
+            resp=$(curl -fsS --max-time 30 --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@sing-box-ruleset/${file}" || true)
             status=$(printf '%s' "${resp}" | jq -r '.status // empty' 2>/dev/null || true)
             # 只看顶层 status：响应里的 throttled 是 per-path「最近已作废过」，不代表这次失败
             [ -n "${status}" ] || echo "::warning::sing-box-ruleset/${file} purge 未拿到有效响应: ${resp}"

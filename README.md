@@ -36,7 +36,7 @@
 | `geosite-mini.dat` | `private`、`microsoft-cn`、`apple-cn`、`google-cn`、`games-cn`、`tld-proxy`、`proxy`、`cn` |
 
 - `-lite` 不是「整体精简版」：tag 数量与体量几乎相同，差异**只在 `fakeip-filter` 这一个 tag**（正则部分不同，几 KB 量级）。
-- `geosite-mini.dat` 里的 `cn` 用的是精简域名表 `cn-lite` 的内容（构建时把 `cn-lite` 重命名为 `cn`），不是完整 `cn`。
+- `geosite-mini.dat` 里的 `cn` 用的是精简域名表 `cn-lite` 的内容，**不是完整 `cn`**：实测 `cn` 有 **6,950** 条，而 `geosite.dat` 的 `cn` 有 **113,111** 条。名字一样、内容差 16 倍，用 mini 时务必留意。
 - 各 tag 的域名来源见 [第 二 节](#二rule-set-文件)。
 
 ### geoip（IP 库）
@@ -215,7 +215,12 @@ rules:
 4. 用 mihomo / sing-box 转换出 `.mrs` / `.srs`；
 5. 校验产物完整性后推送到四个分支并更新 release，最后 purge jsDelivr 缓存。
 
-tag 清单的唯一真源是 [`config/tags.sh`](config/tags.sh)。README 与它的一致性由 [`tools/check_readme.py`](tools/check_readme.py) 在 CI 中校验（`.github/workflows/readme-check.yml`），漂移会让 CI 失败。
+tag 清单的唯一真源是 [`config/tags.sh`](config/tags.sh)。与它的一致性有两道 CI 校验：
+
+- [`tools/check_readme.py`](tools/check_readme.py)：README 里的清单（`.github/workflows/readme-check.yml`）；
+- [`tools/check_dat.py`](tools/check_dat.py)：构建产出的 5 个 `geosite*.dat` 里**实际**的 tag 集合（在 `Assert artifacts` 一步内），顺带确认 mini 的 `cn` 确实是精简内容。
+
+任一处漂移都会让 CI 失败，而不是悄悄上线。
 
 ---
 
