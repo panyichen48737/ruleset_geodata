@@ -97,6 +97,30 @@ jobs:
           fi
           echo "已下载 $(find ./src -type f | wc -l) 个源列表"
 
+      # 源仓库停摆时，本仓照样会推产物并把 release 标成今天更新 —— 数据是旧的却看不出来。
+      # 只看源 release 资产的 updated_at，够用且不用重新解文件。只警告，不判死。
+      - name: Check source freshness
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for spec in "domain-list-custom:domains" "geoip:mihomo-geodata"; do
+            repo="${spec%%:*}"; tag="${spec##*:}"
+            newest=$(curl -fsSL --max-time 60 --retry 3 --retry-delay 5 \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              "https://api.github.com/repos/panyichen48737/${repo}/releases/tags/${tag}" 2>/dev/null \
+              | jq -r '[.assets[].updated_at] | max // empty' 2>/dev/null || true)
+            if [ -z "${newest}" ]; then
+              echo "::warning::读不到 ${repo}@${tag} 的资产时间，跳过新鲜度检查"
+              continue
+            fi
+            age=$(( ( $(date +%s) - $(date -d "${newest}" +%s) ) / 86400 ))
+            echo "${repo}@${tag} 最新资产更新于 ${newest}（${age} 天前）"
+            if [ "${age}" -gt 3 ]; then
+              echo "::warning::${repo}@${tag} 已 ${age} 天没更新，本轮产物的数据可能已停滞"
+            fi
+          done
+
       - name: Generate `mihomo` geodata
         shell: bash
         run: |
