@@ -18,8 +18,11 @@ push_branch() {
   git config --local user.name "github-actions[bot]"
   git remote add origin "https://${GITHUB_ACTOR}:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}"
 
-  # 分支还不存在（首次运行）时 fetch 会失败，此时直接建根提交
-  if git fetch -q --depth=1 origin "${branch}" 2>/dev/null; then
+  # 分支还不存在（首次运行）时 fetch 会失败，此时直接建根提交。
+  # refspec 必须写成 refs/heads/：本仓每条产物分支都有一个同名 tag（就是它 release 的 tag），
+  # 而 git 解析短名时 refs/tags/ 优先于 refs/heads/ —— 不限定就会一直拉到那个冻结在两年前的
+  # tag 当基准，"内容无变化"永远不成立，delta base 也形同虚设。
+  if git fetch -q --depth=1 origin "refs/heads/${branch}" 2>/dev/null; then
     git reset -q --soft FETCH_HEAD
   fi
 

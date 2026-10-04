@@ -339,12 +339,15 @@ jobs:
         if: steps.push_geodata.outputs.changed == 'true'
         run: |
           cd ./mihomo-geodata/ || exit 1
-          for file in *; do
-            resp=$(curl -fsS --max-time 30 --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@mihomo-geodata/${file}" || true)
+          purge_one() {
+            resp=$(curl -fsS --max-time 30 --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@mihomo-geodata/$1" || true)
             status=$(printf '%s' "${resp}" | jq -r '.status // empty' 2>/dev/null || true)
             # 只看顶层 status：响应里的 throttled 是 per-path「最近已作废过」，不代表这次失败
-            [ -n "${status}" ] || echo "::warning::mihomo-geodata/${file} purge 未拿到有效响应: ${resp}"
-          done
+            [ -n "${status}" ] || echo "::warning::mihomo-geodata/$1 purge 未拿到有效响应: ${resp}"
+          }
+          export -f purge_one
+          # 瓶颈是逐个请求的往返延迟（15 个文件串行 ~11 s），4 路并行；--retry 仍在，偶发失败照旧只警告
+          printf '%s\0' * | xargs -0 -P 4 -n 1 bash -c 'purge_one "$1"' _
 
       - name: Push `mihomo-ruleset` branch
         id: push_ruleset
@@ -372,12 +375,15 @@ jobs:
         if: steps.push_ruleset.outputs.changed == 'true'
         run: |
           cd ./mihomo-ruleset/ || exit 1
-          for file in *; do
-            resp=$(curl -fsS --max-time 30 --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@mihomo-ruleset/${file}" || true)
+          purge_one() {
+            resp=$(curl -fsS --max-time 30 --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@mihomo-ruleset/$1" || true)
             status=$(printf '%s' "${resp}" | jq -r '.status // empty' 2>/dev/null || true)
             # 只看顶层 status：响应里的 throttled 是 per-path「最近已作废过」，不代表这次失败
-            [ -n "${status}" ] || echo "::warning::mihomo-ruleset/${file} purge 未拿到有效响应: ${resp}"
-          done
+            [ -n "${status}" ] || echo "::warning::mihomo-ruleset/$1 purge 未拿到有效响应: ${resp}"
+          }
+          export -f purge_one
+          # 瓶颈是逐个请求的往返延迟（64 个文件串行 ~40 s），4 路并行；--retry 仍在，偶发失败照旧只警告
+          printf '%s\0' * | xargs -0 -P 4 -n 1 bash -c 'purge_one "$1"' _
 
       - name: Push `sing-box-ruleset-compatible` branch
         id: push_sb_compatible
@@ -406,12 +412,15 @@ jobs:
         if: steps.push_sb_compatible.outputs.changed == 'true'
         run: |
           cd ./sing-box-ruleset-compatible/ || exit 1
-          for file in *; do
-            resp=$(curl -fsS --max-time 30 --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@sing-box-ruleset-compatible/${file}" || true)
+          purge_one() {
+            resp=$(curl -fsS --max-time 30 --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@sing-box-ruleset-compatible/$1" || true)
             status=$(printf '%s' "${resp}" | jq -r '.status // empty' 2>/dev/null || true)
             # 只看顶层 status：响应里的 throttled 是 per-path「最近已作废过」，不代表这次失败
-            [ -n "${status}" ] || echo "::warning::sing-box-ruleset-compatible/${file} purge 未拿到有效响应: ${resp}"
-          done
+            [ -n "${status}" ] || echo "::warning::sing-box-ruleset-compatible/$1 purge 未拿到有效响应: ${resp}"
+          }
+          export -f purge_one
+          # 瓶颈是逐个请求的往返延迟（64 个文件串行 ~40 s），4 路并行；--retry 仍在，偶发失败照旧只警告
+          printf '%s\0' * | xargs -0 -P 4 -n 1 bash -c 'purge_one "$1"' _
 
       - name: Push `sing-box-ruleset` branch
         id: push_sb_latest
@@ -455,12 +464,15 @@ jobs:
         if: steps.push_sb_latest.outputs.changed == 'true'
         run: |
           cd ./sing-box-ruleset/ || exit 1
-          for file in *; do
-            resp=$(curl -fsS --max-time 30 --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@sing-box-ruleset/${file}" || true)
+          purge_one() {
+            resp=$(curl -fsS --max-time 30 --retry 3 --retry-delay 5 "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@sing-box-ruleset/$1" || true)
             status=$(printf '%s' "${resp}" | jq -r '.status // empty' 2>/dev/null || true)
             # 只看顶层 status：响应里的 throttled 是 per-path「最近已作废过」，不代表这次失败
-            [ -n "${status}" ] || echo "::warning::sing-box-ruleset/${file} purge 未拿到有效响应: ${resp}"
-          done
+            [ -n "${status}" ] || echo "::warning::sing-box-ruleset/$1 purge 未拿到有效响应: ${resp}"
+          }
+          export -f purge_one
+          # 瓶颈是逐个请求的往返延迟（64 个文件串行 ~40 s），4 路并行；--retry 仍在，偶发失败照旧只警告
+          printf '%s\0' * | xargs -0 -P 4 -n 1 bash -c 'purge_one "$1"' _
 
       # 只在上一步都成功时运行：此时本地文件集是完整的，删掉的必然是真残留。
       - name: Prune stale release assets
