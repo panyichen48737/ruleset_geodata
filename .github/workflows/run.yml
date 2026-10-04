@@ -125,7 +125,7 @@ jobs:
         shell: bash
         run: |
           source ./config/tags.sh
-          export ARCH1="${GEODATA_ARCH1[*]}" ARCH2="${GEODATA_ARCH2[*]}" ARCH3="${GEODATA_ARCH3[*]}"
+          export ARCH1="${GEODATA_ARCH1[*]}" ARCH2="${GEODATA_ARCH2[*]}"
 
           # 源列表 -> 生成器格式：去 PROCESS-NAME，改写各类型前缀
           conv() { awk '!/^PROCESS-NAME,/' "$1" | sed -e 's/DOMAIN,/full:/' -e 's/DOMAIN-SUFFIX,//' -e 's/DOMAIN-KEYWORD,/keyword:/' -e 's/DOMAIN-REGEX,/regexp:/' > "$2"; }
@@ -138,7 +138,7 @@ jobs:
           # datprofile：allowlist 任务；找不到 tag 会直接报错（旧写法会静默产出空 tag）
           python3 - <<'PY'
           import json, os
-          a1, a2, a3 = (os.environ[n].split() for n in ("ARCH1", "ARCH2", "ARCH3"))
+          a1, a2 = (os.environ[n].split() for n in ("ARCH1", "ARCH2"))
           fp = ["fakeip-filter"]
           json.dump([{"name": "geosite-all.dat", "mode": "allowlist", "lists": fp + a1},
                      {"name": "geosite.dat", "mode": "allowlist", "lists": fp + a2}],
@@ -146,9 +146,6 @@ jobs:
           json.dump([{"name": "geosite-all-lite.dat", "mode": "allowlist", "lists": fp + a1},
                      {"name": "geosite-lite.dat", "mode": "allowlist", "lists": fp + a2}],
                     open("profile-lite.json", "w"))
-          json.dump([{"name": "geosite-mini.dat", "mode": "allowlist",
-                      "lists": ["cn" if t == "cn-lite" else t for t in a3]}],
-                    open("profile-mini.json", "w"))
           PY
 
           # geosite-all.dat + geosite.dat
@@ -162,14 +159,6 @@ jobs:
           # geosite-all-lite.dat + geosite-lite.dat：tag 名不变，只换 fakeip-filter 的内容
           fakeip ../src/fakeip-filter-lite.list ./mydata/fakeip-filter
           go run ./ --datapath=./mydata/ --datprofile=./profile-lite.json
-
-          # geosite-mini.dat：cn-lite 的内容以 cn 这个 tag 输出
-          rm -f ./mydata/*
-          for t in "${GEODATA_ARCH3[@]}"; do
-            conv "../src/${t}.list" "./mydata/${t}"
-          done
-          mv -f ./mydata/cn-lite ./mydata/cn
-          go run ./ --datapath=./mydata/ --datprofile=./profile-mini.json
 
       - name: Get geoip relative files
         shell: bash
@@ -307,7 +296,7 @@ jobs:
         run: |
           source ./config/tags.sh
 
-          for f in geosite-all.dat geosite-all-lite.dat geosite.dat geosite-lite.dat geosite-mini.dat geoip.dat geoip.metadb Country.mmdb; do
+          for f in geosite-all.dat geosite-all-lite.dat geosite.dat geosite-lite.dat geoip.dat geoip.metadb Country.mmdb; do
             [ -s "./mihomo-geodata/${f}" ] || { echo "::error::./mihomo-geodata/${f} 缺失或为空"; exit 1; }
           done
 

@@ -31,7 +31,7 @@ def parse_config(path: Path) -> dict[str, list[str]]:
         m = re.match(r"^([A-Z0-9_]+)=\((.*)\)\s*$", line.strip())
         if m:
             arrays[m.group(1)] = m.group(2).split()
-    required = {"GEODATA_ARCH1", "GEODATA_ARCH2", "GEODATA_ARCH3", "RULESET_DOMAINS", "RULESET_IPS"}
+    required = {"GEODATA_ARCH1", "GEODATA_ARCH2", "RULESET_DOMAINS", "RULESET_IPS"}
     missing = required - arrays.keys()
     if missing:
         sys.exit(f"config/tags.sh 缺少数组: {', '.join(sorted(missing))}")
@@ -74,20 +74,17 @@ def main() -> int:
     arrays = parse_config(CONFIG)
     section_one, section_two = split_sections(README.read_text(encoding="utf-8"))
 
-    arch1, arch2, arch3 = (
+    arch1, arch2 = (
         arrays["GEODATA_ARCH1"],
         arrays["GEODATA_ARCH2"],
-        arrays["GEODATA_ARCH3"],
     )
-    # geodata 侧：-lite 变体只是把 fakeip-filter 换成精简内容，tag 名不变；
-    # mini 用 cn-lite 的内容生成，但 tag 名被改回 cn（见 run.yml）。
+    # geodata 侧：-lite 变体只是把 fakeip-filter 换成精简内容，tag 名不变。
     rows_one = table_rows(section_one)
     compare_rows(
         rows_one,
         {
             "geosite-all.dat": {"fakeip-filter"} | set(arch1),
             "geosite.dat": {"fakeip-filter"} | set(arch2),
-            "geosite-mini.dat": (set(arch3) - {"cn-lite"}) | {"cn"},
         },
     )
     # -lite 两行内容与基名相同，README 里用文字说明，只校验存在

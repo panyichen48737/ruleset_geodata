@@ -80,7 +80,7 @@ def parse_config(path: Path) -> dict[str, list[str]]:
         m = re.match(r"^([A-Z0-9_]+)=\((.*)\)\s*$", line.strip())
         if m:
             arrays[m.group(1)] = m.group(2).split()
-    required = {"GEODATA_ARCH1", "GEODATA_ARCH2", "GEODATA_ARCH3"}
+    required = {"GEODATA_ARCH1", "GEODATA_ARCH2"}
     missing = required - arrays.keys()
     if missing:
         sys.exit(f"config/tags.sh 缺少数组: {', '.join(sorted(missing))}")
@@ -94,7 +94,6 @@ def main() -> int:
     arrays = parse_config(CONFIG)
     a1 = {t.upper() for t in arrays["GEODATA_ARCH1"]}
     a2 = {t.upper() for t in arrays["GEODATA_ARCH2"]}
-    a3 = {t.upper() for t in arrays["GEODATA_ARCH3"]}
 
     fp = {"FAKEIP-FILTER"}
     expected = {
@@ -102,8 +101,6 @@ def main() -> int:
         "geosite-all-lite.dat": fp | a1,
         "geosite.dat": fp | a2,
         "geosite-lite.dat": fp | a2,
-        # mini 用 cn-lite 的内容，但 tag 名被改回 cn（见 run.yml）
-        "geosite-mini.dat": (a3 - {"CN-LITE"}) | {"CN"},
     }
 
     parsed: dict[str, dict[str, int]] = {}
@@ -124,13 +121,6 @@ def main() -> int:
             errors.append(f"{name} 缺少 tag {tag}")
         if not got:
             errors.append(f"{name} 里没有任何 tag")
-
-    # mini 的 CN 应当是 cn-lite 的精简内容，条目数必须明显少于完整 cn
-    # （这条防止有人"顺手修正"那个 mv cn-lite cn 的改名）
-    mini, full = parsed.get("geosite-mini.dat", {}), parsed.get("geosite.dat", {})
-    if "CN" in mini and "CN" in full and mini["CN"] >= full["CN"]:
-        errors.append(f"geosite-mini.dat 的 CN 有 {mini['CN']} 条，不少于 geosite.dat 的 {full['CN']} 条，"
-                      "cn-lite 改名可能被改坏了")
 
     for name, got in parsed.items():
         print(f"{name}: {len(got)} 个 tag")
