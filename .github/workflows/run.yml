@@ -6,7 +6,8 @@ on:
   repository_dispatch:
     types: [data-updated]
   schedule:
-    - cron: "0 3 * * *"
+    # 避开整点：GitHub 的 schedule 在整点高负载时会被延迟，负载再高还会直接丢弃
+    - cron: "23 3 * * *"
       timezone: "Asia/Shanghai"
   push:
     branches:
