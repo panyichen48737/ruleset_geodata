@@ -21,6 +21,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 # 三路触发（push / schedule / 手动）并发时会同时 force push 同一批分支，互相覆盖。
 # 串行化，且不取消进行中的一轮（取消会留下 push 了一半的分支状态）。
@@ -485,6 +486,26 @@ jobs:
           prune_release mihomo-ruleset ./mihomo-ruleset
           prune_release sing-box-ruleset-compatible ./sing-box-ruleset-compatible
           prune_release sing-box-ruleset ./sing-box-ruleset
+
+      # 失败只落在 Actions 列表里就没人看见（domain-list 那轮连红三天没人发现）。
+      # 失败时开一个 issue（已有开着的就补一条评论），让它进 GitHub 的通知里。
+      # 写 issue 用 GITHUB_TOKEN，需要 issues: write。
+      - name: Report failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TITLE: 构建失败：${{ github.workflow }}
+        run: |
+          url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          printf '运行：%s\n触发：%s\n提交：%s\n' "${url}" "${GITHUB_EVENT_NAME}" "${GITHUB_SHA:0:7}" > "${RUNNER_TEMP}/failure.md"
+          # 标题固定，所以同一类失败只留一个开着的 issue，重复失败追加评论。
+          number=$(gh issue list --repo "${GITHUB_REPOSITORY}" --state open --limit 100 \
+            --json number,title --jq "[.[] | select(.title == \"${TITLE}\")][0].number // empty" || true)
+          if [ -n "${number}" ]; then
+            gh issue comment "${number}" --repo "${GITHUB_REPOSITORY}" --body-file "${RUNNER_TEMP}/failure.md"
+          else
+            gh issue create --repo "${GITHUB_REPOSITORY}" --title "${TITLE}" --body-file "${RUNNER_TEMP}/failure.md"
+          fi
 
   # 单独一个 job：删除运行记录只需要 actions:write，不该让整个 build job 都带着这个权限
   cleanup:
