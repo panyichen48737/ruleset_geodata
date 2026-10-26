@@ -9,6 +9,8 @@ cn.windowssearch.com
 collaborate.download.prss.microsoft.com
 collaborateppe.download.prss.microsoft.com
 ctldl.windowsupdate.com
+dc.applicationinsights.azure.com
+dc.services.visualstudio.com
 developer.microsoft.com
 download.microsoft.com
 download.visualstudio.microsoft.com
@@ -19,6 +21,7 @@ itacademy.download.prss.microsoft.com
 itacademyuat.download.prss.microsoft.com
 lex.download.prss.microsoft.com
 lexuat.download.prss.microsoft.com
+live.applicationinsights.azure.com
 mbs.download.prss.microsoft.com
 mpnbenefits.download.prss.microsoft.com
 mpnbenefitsrtl.download.prss.microsoft.com
@@ -34,6 +37,7 @@ officemkt.download.prss.microsoft.com
 officemktuat.download.prss.microsoft.com
 osrelease.download.prss.microsoft.com
 rsm.download.prss.microsoft.com
+rt.services.visualstudio.com
 sdx.microsoft.com
 shell.cdn.office.net
 software.download.prss.microsoft.com
@@ -54,7 +58,10 @@ windbg.download.prss.microsoft.com
 +.aadrm.cn
 +.aggresmart.com
 +.apihub-internal.cn
++.applicationinsights.io
++.applicationinsights.net
 +.appserviceenvironment.cn
++.aria.ms
 +.azchcdna.com
 +.azchcdnb.com
 +.azchcdnc.com
@@ -121,6 +128,7 @@ windbg.download.prss.microsoft.com
 +.cn.bing.net
 +.cn.mm.bing.net
 +.collector.github.com
++.data.microsoft.com
 +.dcg.microsoft.com
 +.ditu.live.com
 +.dl.delivery.mp.microsoft.com
@@ -128,6 +136,7 @@ windbg.download.prss.microsoft.com
 +.dynamics.cn
 +.engkoo.com
 +.hdinsightservices.cn
++.in.applicationinsights.azure.com
 +.lync.cn
 +.management-azure-devices-provisioning.cn
 +.management-azure-devices.cn
@@ -182,6 +191,7 @@ windbg.download.prss.microsoft.com
 +.sovcloud-static.cn
 +.sovcloud-usercontent.cn
 +.sovcloud.cn
++.telemetry.microsoft.com
 +.th.bing.com
 +.trafficmanager.cn
 +.trustcenter.cn
